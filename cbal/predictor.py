@@ -80,8 +80,9 @@ def _auto_context_length(
     a minimum; we use 3x prediction_length for slightly longer context
     which helps DL models like PatchTST.
     """
+    # AG-style: min(512, max(10, 2 * prediction_length))
     sp = _infer_seasonal_period(freq)
-    ctx = max(3 * prediction_length, 2 * sp, 10)
+    ctx = min(512, max(10, 2 * prediction_length, 2 * sp))
     if max_ts_length is not None:
         ctx = min(ctx, max_ts_length - prediction_length)
     return max(ctx, prediction_length)
@@ -127,20 +128,20 @@ _PRESETS = {
             "DLinear": {"max_epochs": 50, "context_length": None,
                         "learning_rate": 1e-3, "patience": 10},
             "PatchTST": {"max_epochs": 50, "d_model": 128, "n_layers": 3,
-                         "learning_rate": 1e-4, "patience": 10,
+                         "learning_rate": 1e-3, "patience": 20,
                          "batch_size": 64},
             "N-HiTS": {"max_epochs": 50, "hidden_size": 256,
-                       "learning_rate": 5e-4, "patience": 10},
-            "DeepAR": {"max_epochs": 50, "hidden_size": 64,
-                       "learning_rate": 1e-3, "patience": 15,
+                       "learning_rate": 1e-3, "patience": 20},
+            "DeepAR": {"max_epochs": 50, "hidden_size": 40,
+                       "learning_rate": 1e-3, "patience": 20,
                        "batch_size": 64},
-            "TFT": {"max_epochs": 50, "d_model": 64, "patience": 15,
+            "TFT": {"max_epochs": 50, "d_model": 64, "patience": 20,
                      "batch_size": 64, "learning_rate": 1e-3},
             # Quantile-trained variant for better PI and ensemble diversity
             "DLinear_Q": {"_base_model_name": "DLinear", "max_epochs": 50,
                           "loss_type": "quantile", "learning_rate": 1e-3},
             "PatchTST_Q": {"_base_model_name": "PatchTST", "max_epochs": 50,
-                           "d_model": 128, "n_layers": 3, "learning_rate": 1e-4,
+                           "d_model": 128, "n_layers": 3, "learning_rate": 1e-3,
                            "loss_type": "quantile", "batch_size": 64},
             # Foundation model — zero-shot, strong on diverse datasets
             "Chronos-2": {},

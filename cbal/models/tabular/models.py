@@ -239,7 +239,7 @@ class RecursiveTabularModel(AbstractTimeSeriesModel):
         "min_child_samples": 5,
         "n_jobs": -1,
         "target_scaler": "standard",  # AG default: standard for Recursive
-        "differences": None,  # Auto: [seasonal_period] for seasonal differencing
+        "differences": [],  # Disabled: diff features in feature engineering handle this
         "early_stopping_rounds": 50,  # Stop if no improvement for 50 rounds
     }
 
@@ -253,17 +253,10 @@ class RecursiveTabularModel(AbstractTimeSeriesModel):
                          if w < min_len] or [2]
         self._include_dates = self.get_hyperparameter("include_date_features")
 
-        # --- Seasonal differencing (AG-style) ---
-        # AG only diffs when series is long enough: min_len > 3*sp + prediction_length
-        # For many short series (like M3), differencing hurts more than it helps
+        # --- Seasonal differencing ---
+        # Disabled by default: diff features in feature engineering handle this better
+        # for RecursiveTabular. Explicit differencing + inverse is error-prone.
         diff_cfg = self.get_hyperparameter("differences")
-        n_items = train_data.num_items
-        if diff_cfg is None:
-            if sp > 1 and min_len > sp * 4 + self.prediction_length and n_items <= 50:
-                # Only diff for few long series (like ETT)
-                diff_cfg = [sp]
-            else:
-                diff_cfg = []
         self._differences = diff_cfg or []
         self._diff_tails: dict[str, list[np.ndarray]] = {}  # store tails for inverse
 
@@ -366,58 +359,27 @@ class RecursiveTabularModel(AbstractTimeSeriesModel):
                 total_trim = sum(self._differences)
                 timestamps = timestamps[total_trim:]
 
-            # Context for prediction — cap to keep predict fast
+            # Context for prediction — cap for speed, always full rebuild for accuracy
             max_lag = max(self._lags) if self._lags else 1
             max_win = max(self._windows) if self._windows else 7
-            context_size = min(len(series_for_pred), max(max_lag, max_win) + 10)
+            context_size = min(len(series_for_pred), max(max_lag, max_win) + 50)
             series_arr = series_for_pred[-context_size:].copy()
             ctx_timestamps = timestamps[-context_size:]
 
             # Get inverse scale params
             loc, sc = self._item_scales.get(item_id, (0.0, 1.0))
 
-            # Strategy: for short context (<500) do full rebuild each step (accurate)
-            # For long context, use incremental update (fast)
-            use_incremental = context_size > 500
             buf = list(series_arr)
-
-            if use_incremental:
-                # Build feature matrix ONCE, then incremental update
-                X0 = build_feature_matrix(np.array(buf), ctx_timestamps,
-                                           self._lags, self._windows,
-                                           self._include_dates, freq=self.freq)
-                base_row = X0.iloc[-1][self._feature_names].fillna(0).values.astype(np.float64).copy()
-                feat_to_idx = {name: i for i, name in enumerate(self._feature_names)}
-                lag_indices = [(feat_to_idx[f"lag_{lag}"], lag) for lag in self._lags
-                               if f"lag_{lag}" in feat_to_idx]
-                diff_indices = [(feat_to_idx[f"diff_{lag}"], lag) for lag in self._lags
-                                if lag <= 7 and f"diff_{lag}" in feat_to_idx]
-                x_df = pd.DataFrame([base_row], columns=self._feature_names)
-
             predictions = []
             for h in range(self.prediction_length):
-                if use_incremental:
-                    x_df.iloc[0] = base_row
-                    pred_val = float(self._model.predict(x_df)[0])
-                else:
-                    # Full rebuild — accurate for short series
-                    arr = np.array(buf, dtype=np.float64)
-                    ts_ext = ctx_timestamps.append(future_ts[:h]) if h > 0 else ctx_timestamps
-                    X = build_feature_matrix(arr, ts_ext, self._lags, self._windows,
-                                              self._include_dates, freq=self.freq)
-                    x_row = X.iloc[[-1]][self._feature_names].fillna(0)
-                    pred_val = float(self._model.predict(x_row)[0])
-
+                arr = np.array(buf, dtype=np.float64)
+                ts_ext = ctx_timestamps.append(future_ts[:h]) if h > 0 else ctx_timestamps
+                X = build_feature_matrix(arr, ts_ext, self._lags, self._windows,
+                                          self._include_dates, freq=self.freq)
+                x_row = X.iloc[[-1]][self._feature_names].fillna(0)
+                pred_val = float(self._model.predict(x_row)[0])
                 predictions.append(pred_val)
                 buf.append(pred_val)
-
-                if use_incremental:
-                    n = len(buf)
-                    for idx, lag in lag_indices:
-                        base_row[idx] = buf[n - 1 - lag] if lag < n else 0.0
-                    for idx, lag in diff_indices:
-                        if lag < n:
-                            base_row[idx] = buf[-1] - buf[-(1 + lag)]
 
             mean_diff = np.array(predictions)
 
