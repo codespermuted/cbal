@@ -1,0 +1,219 @@
+"""Step 5-d Phase 2: PatchTST verification tests.
+
+Run on your server:
+    cd myforecaster-project
+    pytest tests/test_step5d_patchtst.py -v
+"""
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from myforecaster.dataset import TimeSeriesDataFrame
+
+import os, importlib.util
+if os.environ.get("MYFORECASTER_SKIP_TORCH", ""):
+    pytest.skip("MYFORECASTER_SKIP_TORCH is set", allow_module_level=True)
+if importlib.util.find_spec("torch") is None:
+    pytest.skip("PyTorch not installed", allow_module_level=True)
+
+import torch
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def daily_tsdf():
+    np.random.seed(42)
+    dates = pd.date_range("2023-01-01", periods=200, freq="D")
+    rows = []
+    for item_id in ["A", "B", "C"]:
+        base = {"A": 100, "B": 200, "C": 50}[item_id]
+        for i, d in enumerate(dates):
+            val = base + i * 0.2 + 10 * np.sin(2 * np.pi * i / 7) + np.random.randn() * 2
+            rows.append({"item_id": item_id, "timestamp": d, "target": val})
+    return TimeSeriesDataFrame.from_data_frame(pd.DataFrame(rows))
+
+
+@pytest.fixture
+def pred_length():
+    return 7
+
+
+@pytest.fixture
+def train_test(daily_tsdf, pred_length):
+    return daily_tsdf.train_test_split(pred_length)
+
+
+# ---------------------------------------------------------------------------
+# RevIN tests
+# ---------------------------------------------------------------------------
+class TestRevIN:
+    def test_normalize_denormalize_roundtrip(self):
+        from myforecaster.models.deep_learning.patchtst import RevIN
+        revin = RevIN(num_features=1, affine=False)
+        x = torch.randn(4, 50, 1) * 10 + 100  # mean~100, std~10
+        normed = revin(x)
+        # Should be approximately zero mean, unit std
+        assert normed.mean(dim=1).abs().max() < 0.01
+        assert (normed.std(dim=1) - 1.0).abs().max() < 0.1
+
+    def test_inverse_restores_scale(self):
+        from myforecaster.models.deep_learning.patchtst import RevIN
+        revin = RevIN(num_features=1, affine=False)
+        x = torch.randn(4, 50, 1) * 10 + 100
+        normed = revin(x)
+        # Inverse on a subset — restored values should be in original range
+        restored = revin.inverse(normed[:, :10, :])
+        # Each sample mean should be roughly near 100 (within 15 for small subset)
+        assert (restored.mean(dim=1) - 100).abs().max() < 15.0
+
+
+# ---------------------------------------------------------------------------
+# PatchTST Network tests
+# ---------------------------------------------------------------------------
+class TestPatchTSTNetwork:
+    def test_output_shape(self):
+        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        net = PatchTSTNetwork(
+            context_length=96, prediction_length=24,
+            patch_len=16, stride=8, d_model=32, n_heads=4, n_layers=1, d_ff=64,
+        )
+        x = torch.randn(4, 96)
+        out = net(x)
+        assert out.shape == (4, 24)
+
+    def test_n_patches_calculation(self):
+        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        net = PatchTSTNetwork(
+            context_length=96, prediction_length=24,
+            patch_len=16, stride=8,
+        )
+        # (96 - 16) / 8 + 1 = 11 patches
+        assert net.n_patches == 11
+
+    def test_short_context_with_padding(self):
+        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        # context_length < patch_len → should pad
+        net = PatchTSTNetwork(
+            context_length=10, prediction_length=5,
+            patch_len=16, stride=8, d_model=32, n_heads=4, n_layers=1,
+        )
+        x = torch.randn(4, 10)
+        out = net(x)
+        assert out.shape == (4, 5)
+
+    def test_without_revin(self):
+        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        net = PatchTSTNetwork(
+            context_length=96, prediction_length=24,
+            patch_len=16, stride=8, d_model=32, n_heads=4, n_layers=1,
+            revin=False,
+        )
+        x = torch.randn(4, 96)
+        out = net(x)
+        assert out.shape == (4, 24)
+
+    def test_gradient_flows(self):
+        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        net = PatchTSTNetwork(
+            context_length=96, prediction_length=24,
+            patch_len=16, stride=8, d_model=32, n_heads=4, n_layers=1,
+        )
+        x = torch.randn(4, 96)
+        target = torch.randn(4, 24)
+        pred = net(x)
+        loss = torch.nn.functional.mse_loss(pred, target)
+        loss.backward()
+        # Check that gradients exist
+        for name, param in net.named_parameters():
+            if param.requires_grad:
+                assert param.grad is not None, f"No gradient for {name}"
+
+    def test_different_patch_configs(self):
+        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        # Non-overlapping patches
+        net = PatchTSTNetwork(
+            context_length=96, prediction_length=24,
+            patch_len=16, stride=16, d_model=32, n_heads=4, n_layers=1,
+        )
+        x = torch.randn(4, 96)
+        out = net(x)
+        assert out.shape == (4, 24)
+        assert net.n_patches == 6  # 96 / 16
+
+
+# ---------------------------------------------------------------------------
+# PatchTST Model integration tests
+# ---------------------------------------------------------------------------
+class TestPatchTSTModel:
+    def test_fit_predict(self, train_test, pred_length):
+        from myforecaster.models.deep_learning.patchtst import PatchTSTModel
+        train, _ = train_test
+        m = PatchTSTModel(
+            freq="D", prediction_length=pred_length,
+            hyperparameters={
+                "max_epochs": 3, "context_length": 64,
+                "patch_len": 8, "stride": 4,
+                "d_model": 32, "n_heads": 4, "n_layers": 1, "d_ff": 64,
+                "batch_size": 16,
+            },
+        )
+        m.fit(train)
+        pred = m.predict(train)
+        assert len(pred) == 3 * pred_length
+        assert "mean" in pred.columns
+
+    def test_prediction_values_are_finite(self, train_test, pred_length):
+        from myforecaster.models.deep_learning.patchtst import PatchTSTModel
+        train, _ = train_test
+        m = PatchTSTModel(
+            freq="D", prediction_length=pred_length,
+            hyperparameters={
+                "max_epochs": 3, "context_length": 64,
+                "patch_len": 8, "stride": 4,
+                "d_model": 32, "n_heads": 4, "n_layers": 1,
+            },
+        )
+        m.fit(train)
+        pred = m.predict(train)
+        assert np.isfinite(pred["mean"].values).all()
+
+    def test_future_timestamps_correct(self, train_test, pred_length):
+        from myforecaster.models.deep_learning.patchtst import PatchTSTModel
+        train, _ = train_test
+        m = PatchTSTModel(
+            freq="D", prediction_length=pred_length,
+            hyperparameters={
+                "max_epochs": 2, "context_length": 64,
+                "patch_len": 8, "stride": 4,
+                "d_model": 32, "n_heads": 4, "n_layers": 1,
+            },
+        )
+        m.fit(train)
+        pred = m.predict(train)
+        for item_id in train.item_ids:
+            last_ts = train.loc[item_id].index.get_level_values("timestamp").max()
+            pred_ts = pred.loc[item_id].index.get_level_values("timestamp")
+            assert pred_ts.min() > last_ts
+
+    def test_score_is_finite(self, train_test, pred_length):
+        from myforecaster.models.deep_learning.patchtst import PatchTSTModel
+        train, test = train_test
+        m = PatchTSTModel(
+            freq="D", prediction_length=pred_length,
+            hyperparameters={
+                "max_epochs": 3, "context_length": 64,
+                "patch_len": 8, "stride": 4,
+                "d_model": 32, "n_heads": 4, "n_layers": 1,
+            },
+        )
+        m.fit(train)
+        score = m.score(test, metric="MAE")
+        assert np.isfinite(score)
+
+    def test_registered(self):
+        from myforecaster.models.deep_learning.patchtst import PatchTSTModel
+        from myforecaster.models import MODEL_REGISTRY
+        assert "PatchTST" in MODEL_REGISTRY
