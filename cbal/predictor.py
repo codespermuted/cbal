@@ -125,9 +125,7 @@ _PRESETS = {
             "AutoTheta": {},
             "RecursiveTabular": {"backend": "LightGBM"},
             "DirectTabular": {"backend": "LightGBM"},
-            "DLinear": {"max_epochs": 50, "context_length": None,
-                        "learning_rate": 1e-3, "patience": 10},
-            # PatchTST with two LR variants for robustness across datasets
+            # PatchTST: two LR variants — lr=1e-3 wins on some, 1e-4 on others
             "PatchTST": {"max_epochs": 50, "d_model": 128, "n_layers": 3,
                          "learning_rate": 1e-3, "patience": 20,
                          "batch_size": 64},
@@ -142,7 +140,7 @@ _PRESETS = {
                        "batch_size": 64},
             "TFT": {"max_epochs": 50, "d_model": 64, "patience": 20,
                      "batch_size": 64, "learning_rate": 1e-3},
-            # Quantile-trained variant for better PI and ensemble diversity
+            # Quantile variants for ensemble diversity
             "DLinear_Q": {"_base_model_name": "DLinear", "max_epochs": 50,
                           "loss_type": "quantile", "learning_rate": 1e-3},
             "PatchTST_Q": {"_base_model_name": "PatchTST", "max_epochs": 50,
