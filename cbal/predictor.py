@@ -127,9 +127,14 @@ _PRESETS = {
             "DirectTabular": {"backend": "LightGBM"},
             "DLinear": {"max_epochs": 50, "context_length": None,
                         "learning_rate": 1e-3, "patience": 10},
+            # PatchTST with two LR variants for robustness across datasets
             "PatchTST": {"max_epochs": 50, "d_model": 128, "n_layers": 3,
                          "learning_rate": 1e-3, "patience": 20,
                          "batch_size": 64},
+            "PatchTST_v2": {"_base_model_name": "PatchTST",
+                            "max_epochs": 50, "d_model": 128, "n_layers": 3,
+                            "learning_rate": 1e-4, "patience": 20,
+                            "batch_size": 64},
             "N-HiTS": {"max_epochs": 50, "hidden_size": 256,
                        "learning_rate": 1e-3, "patience": 20},
             "DeepAR": {"max_epochs": 50, "hidden_size": 40,
@@ -141,7 +146,7 @@ _PRESETS = {
             "DLinear_Q": {"_base_model_name": "DLinear", "max_epochs": 50,
                           "loss_type": "quantile", "learning_rate": 1e-3},
             "PatchTST_Q": {"_base_model_name": "PatchTST", "max_epochs": 50,
-                           "d_model": 128, "n_layers": 3, "learning_rate": 1e-3,
+                           "d_model": 128, "n_layers": 3, "learning_rate": 1e-4,
                            "loss_type": "quantile", "batch_size": 64},
             # Foundation model — zero-shot, strong on diverse datasets
             "Chronos-2": {},
