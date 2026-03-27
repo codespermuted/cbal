@@ -14,7 +14,7 @@ def split(df, pred_len):
     return df.iloc[:-pred_len].copy(), df.iloc[-pred_len:].copy()
 
 def metrics(preds, test_df, train_df):
-    from myforecaster.metrics.scorers import MAE, RMSE
+    from cbal.metrics.scorers import MAE, RMSE
     y_true = test_df["target"].values
     try:
         y_pred = preds.loc["ETTh1"]["mean"].values[:len(y_true)]
@@ -23,8 +23,8 @@ def metrics(preds, test_df, train_df):
     return {"MAE": float(MAE()(y_true, y_pred)), "RMSE": float(RMSE()(y_true, y_pred))}
 
 def run_myf(train_df, pred_len):
-    from myforecaster import TimeSeriesPredictor
-    from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame
+    from cbal import TimeSeriesPredictor
+    from cbal.dataset.ts_dataframe import TimeSeriesDataFrame
     tsdf = TimeSeriesDataFrame.from_data_frame(train_df)
     p = TimeSeriesPredictor(prediction_length=pred_len, eval_metric="MAE", freq="h",
                             path=f"/tmp/myf_q_{int(time.time())}")
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     runner = sys.argv[1] if len(sys.argv) > 1 else "both"
 
     if runner in ("myf", "both"):
-        print("[MyForecaster] ETTh1 pred_len=96...")
+        print("[C-BAL] ETTh1 pred_len=96...")
         preds, ft, best = run_myf(train_df, pred_len)
         m = metrics(preds, test_df, train_df)
         print(f"  MAE={m['MAE']:.4f}  RMSE={m['RMSE']:.4f}  Time={ft:.1f}s  Best={best}")

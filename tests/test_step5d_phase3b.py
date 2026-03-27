@@ -1,7 +1,7 @@
 """Step 5-d Phase 3b: TimeMixer, TimesNet, ModernTCN verification tests.
 
 Run on your server:
-    cd myforecaster-project
+    cd cbal-project
     pytest tests/test_step5d_phase3b.py -v
 """
 
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
+from cbal.dataset import TimeSeriesDataFrame
 
 import os, importlib.util
 if os.environ.get("MYFORECASTER_SKIP_TORCH", ""):
@@ -51,7 +51,7 @@ def train_test(daily_tsdf, pred_length):
 # ===========================================================================
 class TestTimeMixerNetwork:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.timemixer import TimeMixerNetwork
+        from cbal.models.deep_learning.timemixer import TimeMixerNetwork
         net = TimeMixerNetwork(context_length=96, prediction_length=24,
                                 d_model=32, n_scales=3, n_layers=2)
         x = torch.randn(4, 96)
@@ -59,12 +59,12 @@ class TestTimeMixerNetwork:
         assert out.shape == (4, 24)
 
     def test_multiscale_lengths(self):
-        from myforecaster.models.deep_learning.timemixer import TimeMixerNetwork
+        from cbal.models.deep_learning.timemixer import TimeMixerNetwork
         net = TimeMixerNetwork(context_length=96, prediction_length=24, n_scales=4)
         assert net.scale_lengths == [96, 48, 24, 12]
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.timemixer import TimeMixerNetwork
+        from cbal.models.deep_learning.timemixer import TimeMixerNetwork
         net = TimeMixerNetwork(context_length=64, prediction_length=12,
                                 d_model=16, n_scales=3, n_layers=1)
         x = torch.randn(2, 64)
@@ -75,7 +75,7 @@ class TestTimeMixerNetwork:
 
     def test_pdm_decomposition(self):
         """PDM should decompose and mix at multiple scales."""
-        from myforecaster.models.deep_learning.timemixer import PDMBlock
+        from cbal.models.deep_learning.timemixer import PDMBlock
         pdm = PDMBlock(n_channels=1, d_model=16, n_scales=3,
                         scale_lengths=[64, 32, 16])
         x_scales = [torch.randn(2, 64, 16), torch.randn(2, 32, 16), torch.randn(2, 16, 16)]
@@ -87,7 +87,7 @@ class TestTimeMixerNetwork:
 
 class TestTimeMixerModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.timemixer import TimeMixerModel
+        from cbal.models.deep_learning.timemixer import TimeMixerModel
         train, _ = train_test
         m = TimeMixerModel(
             freq="D", prediction_length=pred_length,
@@ -104,7 +104,7 @@ class TestTimeMixerModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_score(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.timemixer import TimeMixerModel
+        from cbal.models.deep_learning.timemixer import TimeMixerModel
         train, test = train_test
         m = TimeMixerModel(
             freq="D", prediction_length=pred_length,
@@ -117,8 +117,8 @@ class TestTimeMixerModel:
         assert np.isfinite(m.score(test, metric="MAE"))
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.timemixer import TimeMixerModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.timemixer import TimeMixerModel
+        from cbal.models import MODEL_REGISTRY
         assert "TimeMixer" in MODEL_REGISTRY
 
 
@@ -127,7 +127,7 @@ class TestTimeMixerModel:
 # ===========================================================================
 class TestTimesNetNetwork:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.timesnet import TimesNetNetwork
+        from cbal.models.deep_learning.timesnet import TimesNetNetwork
         net = TimesNetNetwork(context_length=96, prediction_length=24,
                                d_model=32, d_ff=32, n_layers=1, top_k=3)
         x = torch.randn(4, 96)
@@ -136,7 +136,7 @@ class TestTimesNetNetwork:
 
     def test_fft_period_discovery(self):
         """TimesBlock should handle periodic input."""
-        from myforecaster.models.deep_learning.timesnet import TimesBlock
+        from cbal.models.deep_learning.timesnet import TimesBlock
         block = TimesBlock(seq_len=96, d_model=16, d_ff=16, top_k=3)
         x = torch.randn(2, 96, 16)
         out = block(x)
@@ -144,7 +144,7 @@ class TestTimesNetNetwork:
         assert torch.isfinite(out).all()
 
     def test_inception_block(self):
-        from myforecaster.models.deep_learning.timesnet import InceptionBlock
+        from cbal.models.deep_learning.timesnet import InceptionBlock
         inc = InceptionBlock(d_model=16, d_ff=8, num_kernels=3)
         x = torch.randn(2, 16, 8, 12)  # (B, D, num_periods, period_len)
         out = inc(x)
@@ -152,7 +152,7 @@ class TestTimesNetNetwork:
         assert out.shape[1] == 16
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.timesnet import TimesNetNetwork
+        from cbal.models.deep_learning.timesnet import TimesNetNetwork
         net = TimesNetNetwork(context_length=64, prediction_length=12,
                                d_model=16, d_ff=16, n_layers=1, top_k=2)
         x = torch.randn(2, 64)
@@ -164,7 +164,7 @@ class TestTimesNetNetwork:
 
 class TestTimesNetModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.timesnet import TimesNetModel
+        from cbal.models.deep_learning.timesnet import TimesNetModel
         train, _ = train_test
         m = TimesNetModel(
             freq="D", prediction_length=pred_length,
@@ -180,7 +180,7 @@ class TestTimesNetModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_score(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.timesnet import TimesNetModel
+        from cbal.models.deep_learning.timesnet import TimesNetModel
         train, test = train_test
         m = TimesNetModel(
             freq="D", prediction_length=pred_length,
@@ -193,8 +193,8 @@ class TestTimesNetModel:
         assert np.isfinite(m.score(test, metric="MAE"))
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.timesnet import TimesNetModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.timesnet import TimesNetModel
+        from cbal.models import MODEL_REGISTRY
         assert "TimesNet" in MODEL_REGISTRY
 
 
@@ -203,7 +203,7 @@ class TestTimesNetModel:
 # ===========================================================================
 class TestModernTCNNetwork:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.moderntcn import ModernTCNNetwork
+        from cbal.models.deep_learning.moderntcn import ModernTCNNetwork
         net = ModernTCNNetwork(context_length=96, prediction_length=24,
                                 d_model=32, d_ff=64, n_layers=2,
                                 kernel_size=13, patch_len=16, stride=8)
@@ -213,20 +213,20 @@ class TestModernTCNNetwork:
 
     def test_dwconv_is_depthwise(self):
         """DWConv should have groups=d_model (depthwise)."""
-        from myforecaster.models.deep_learning.moderntcn import ModernTCNBlock
+        from cbal.models.deep_learning.moderntcn import ModernTCNBlock
         block = ModernTCNBlock(d_model=32, kernel_size=7)
         assert block.dwconv.groups == 32
 
     def test_large_kernel(self):
         """ModernTCN should support large kernels."""
-        from myforecaster.models.deep_learning.moderntcn import ModernTCNBlock
+        from cbal.models.deep_learning.moderntcn import ModernTCNBlock
         block = ModernTCNBlock(d_model=32, kernel_size=51)
         x = torch.randn(2, 32, 100)
         out = block(x)
         assert out.shape == (2, 32, 100)
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.moderntcn import ModernTCNNetwork
+        from cbal.models.deep_learning.moderntcn import ModernTCNNetwork
         net = ModernTCNNetwork(context_length=64, prediction_length=12,
                                 d_model=16, d_ff=32, n_layers=1,
                                 patch_len=8, stride=4)
@@ -239,7 +239,7 @@ class TestModernTCNNetwork:
 
 class TestModernTCNModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.moderntcn import ModernTCNModel
+        from cbal.models.deep_learning.moderntcn import ModernTCNModel
         train, _ = train_test
         m = ModernTCNModel(
             freq="D", prediction_length=pred_length,
@@ -257,7 +257,7 @@ class TestModernTCNModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_score(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.moderntcn import ModernTCNModel
+        from cbal.models.deep_learning.moderntcn import ModernTCNModel
         train, test = train_test
         m = ModernTCNModel(
             freq="D", prediction_length=pred_length,
@@ -271,6 +271,6 @@ class TestModernTCNModel:
         assert np.isfinite(m.score(test, metric="MAE"))
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.moderntcn import ModernTCNModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.moderntcn import ModernTCNModel
+        from cbal.models import MODEL_REGISTRY
         assert "ModernTCN" in MODEL_REGISTRY

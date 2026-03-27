@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Benchmark: MyForecaster vs AutoGluon-TimeSeries
+Benchmark: C-BAL vs AutoGluon-TimeSeries
 ================================================
 
 Compares on 4 representative datasets covering different characteristics:
@@ -108,13 +108,13 @@ def split_train_test(df, pred_len):
 
 
 # ─────────────────────────────────────────────────────────
-# MyForecaster runner
+# C-BAL runner
 # ─────────────────────────────────────────────────────────
 
-def run_myforecaster(train_df, test_df, pred_len, freq, preset="medium_quality"):
-    """Run MyForecaster and return metrics."""
-    from myforecaster import TimeSeriesPredictor
-    from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame
+def run_cbal(train_df, test_df, pred_len, freq, preset="medium_quality"):
+    """Run C-BAL and return metrics."""
+    from cbal import TimeSeriesPredictor
+    from cbal.dataset.ts_dataframe import TimeSeriesDataFrame
 
     # Filter short series (same as AG) for fair comparison
     min_len_needed = 3 * pred_len + 1
@@ -157,7 +157,7 @@ def run_myforecaster(train_df, test_df, pred_len, freq, preset="medium_quality")
                 sp = v
                 break
 
-    from myforecaster.metrics.scorers import MASE, WQL, sMAPE
+    from cbal.metrics.scorers import MASE, WQL, sMAPE
     mase_scorer = MASE(seasonal_period=sp)
     wql_scorer = WQL()
     smape_scorer = sMAPE()
@@ -262,7 +262,7 @@ def run_autogluon(train_df, test_df, pred_len, freq, preset="medium_quality"):
                 sp = v
                 break
 
-    from myforecaster.metrics.scorers import MASE, WQL, sMAPE
+    from cbal.metrics.scorers import MASE, WQL, sMAPE
     mase_scorer = MASE(seasonal_period=sp)
     wql_scorer = WQL()
     smape_scorer = sMAPE()
@@ -320,7 +320,7 @@ def run_autogluon(train_df, test_df, pred_len, freq, preset="medium_quality"):
 def main():
     preset = sys.argv[1] if len(sys.argv) > 1 else "medium_quality"
     print(f"\n{'='*70}")
-    print(f"  Benchmark: MyForecaster vs AutoGluon-TimeSeries")
+    print(f"  Benchmark: C-BAL vs AutoGluon-TimeSeries")
     print(f"  Preset: {preset}")
     print(f"{'='*70}\n")
 
@@ -347,10 +347,10 @@ def main():
         n_train_items = train_df["item_id"].nunique()
         print(f"  Train items: {n_train_items}, Train rows: {len(train_df)}")
 
-        # --- MyForecaster ---
-        print(f"\n  [MyForecaster] Running ({preset})...")
+        # --- C-BAL ---
+        print(f"\n  [C-BAL] Running ({preset})...")
         try:
-            myf_results = run_myforecaster(train_df, test_df, pred_len, freq, preset)
+            myf_results = run_cbal(train_df, test_df, pred_len, freq, preset)
             print(f"    MASE:  {myf_results['MASE']:.4f}")
             print(f"    sMAPE: {myf_results['sMAPE']:.2f}")
             print(f"    WQL:   {myf_results['WQL']:.4f}")
@@ -377,7 +377,7 @@ def main():
 
         # --- Comparison ---
         if myf_results.get("MASE") and ag_results.get("MASE"):
-            print(f"\n  {'Metric':<10} {'MyForecaster':>14} {'AutoGluon':>14} {'Δ (%)':>10}")
+            print(f"\n  {'Metric':<10} {'C-BAL':>14} {'AutoGluon':>14} {'Δ (%)':>10}")
             print(f"  {'─'*50}")
             for metric in ["MASE", "sMAPE", "WQL"]:
                 mv = myf_results[metric]
@@ -416,7 +416,7 @@ def main():
             avg_ratio_wql = (valid["myf_wql"] / valid["ag_wql"]).mean()
             print(f"\n  Average ratio (MyF / AG):  MASE={avg_ratio_mase:.3f}  "
                   f"sMAPE={avg_ratio_smape:.3f}  WQL={avg_ratio_wql:.3f}")
-            print(f"  (< 1.0 = MyForecaster wins, > 1.0 = AutoGluon wins)")
+            print(f"  (< 1.0 = C-BAL wins, > 1.0 = AutoGluon wins)")
 
     print(f"\n{'='*70}\n")
 

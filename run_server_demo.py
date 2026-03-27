@@ -1,5 +1,5 @@
 """
-myforecaster 종합 데모 — 서버용 (Plotly 대시보드)
+cbal 종합 데모 — 서버용 (Plotly 대시보드)
 
 설치:
     pip install -e ".[stats]"
@@ -22,7 +22,7 @@ myforecaster 종합 데모 — 서버용 (Plotly 대시보드)
 import os, time, numpy as np, pandas as pd, warnings
 warnings.filterwarnings("ignore")
 
-from myforecaster import TimeSeriesPredictor, TimeSeriesDataFrame
+from cbal import TimeSeriesPredictor, TimeSeriesDataFrame
 
 RESULTS = "results"
 os.makedirs(RESULTS, exist_ok=True)
@@ -47,7 +47,7 @@ def savefig(fig, name, title=""):
 # 1. 데이터
 # ────────────────────────────────────────────────
 print("=" * 55)
-print("  MyForecaster 종합 데모")
+print("  C-BAL 종합 데모")
 print("=" * 55)
 
 np.random.seed(42)
@@ -228,7 +228,7 @@ print(f"\nSave/Load: diff={diff:.8f} ✓")
 # ────────────────────────────────────────────────
 # Summary
 # ────────────────────────────────────────────────
-txt = f"""MyForecaster 종합 데모 결과
+txt = f"""C-BAL 종합 데모 결과
 {'='*40}
 데이터:    {N}매장 × {D}일
 모델:      {', '.join(predictor.model_names)}

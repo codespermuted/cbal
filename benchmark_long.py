@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Long-horizon Benchmark: MyForecaster vs AutoGluon-TimeSeries
+Long-horizon Benchmark: C-BAL vs AutoGluon-TimeSeries
 ============================================================
 
 Informer/Autoformer-style benchmarks:
@@ -102,7 +102,7 @@ def split_train_test(df, pred_len):
 # ─────────────────────────────────────────────────────────
 
 def compute_metrics(preds, test_df, train_df, freq):
-    from myforecaster.metrics.scorers import MAE, RMSE, sMAPE
+    from cbal.metrics.scorers import MAE, RMSE, sMAPE
     mae_scorer, rmse_scorer, smape_scorer = MAE(), RMSE(), sMAPE()
 
     mae_scores, rmse_scores, smape_scores = [], [], []
@@ -131,9 +131,9 @@ def compute_metrics(preds, test_df, train_df, freq):
 # Runners
 # ─────────────────────────────────────────────────────────
 
-def run_myforecaster(train_df, test_df, pred_len, freq, preset="medium_quality"):
-    from myforecaster import TimeSeriesPredictor
-    from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame
+def run_cbal(train_df, test_df, pred_len, freq, preset="medium_quality"):
+    from cbal import TimeSeriesPredictor
+    from cbal.dataset.ts_dataframe import TimeSeriesDataFrame
     train_tsdf = TimeSeriesDataFrame.from_data_frame(train_df)
 
     predictor = TimeSeriesPredictor(
@@ -194,7 +194,7 @@ def run_autogluon(train_df, test_df, pred_len, freq, preset="medium_quality"):
 def main():
     preset = sys.argv[1] if len(sys.argv) > 1 else "medium_quality"
     print(f"\n{'='*70}")
-    print(f"  Long-Horizon Benchmark: MyForecaster vs AutoGluon")
+    print(f"  Long-Horizon Benchmark: C-BAL vs AutoGluon")
     print(f"  Preset: {preset}")
     print(f"{'='*70}\n")
 
@@ -219,10 +219,10 @@ def main():
 
         train_df, test_df = split_train_test(df, pred_len)
 
-        # MyForecaster
-        print(f"\n  [MyForecaster] ...")
+        # C-BAL
+        print(f"\n  [C-BAL] ...")
         try:
-            myf = run_myforecaster(train_df, test_df, pred_len, freq, preset)
+            myf = run_cbal(train_df, test_df, pred_len, freq, preset)
             print(f"    MAE={myf['MAE']:.4f}  RMSE={myf['RMSE']:.4f}  sMAPE={myf['sMAPE']:.2f}")
             print(f"    Time: {myf['fit_time']:.1f}s  Best: {myf['best_model']}")
         except Exception as e:
@@ -273,7 +273,7 @@ def main():
             r_mae = (valid["myf_mae"] / valid["ag_mae"]).mean()
             r_rmse = (valid["myf_rmse"] / valid["ag_rmse"]).mean()
             print(f"\n  Avg ratio (MyF/AG): MAE={r_mae:.3f}  RMSE={r_rmse:.3f}")
-            print(f"  (< 1.0 = MyForecaster wins)")
+            print(f"  (< 1.0 = C-BAL wins)")
     print(f"\n{'='*70}\n")
 
 

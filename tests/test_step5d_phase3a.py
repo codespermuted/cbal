@@ -1,7 +1,7 @@
 """Step 5-d Phase 3 batch 1: N-HiTS, TSMixer, SegRNN verification tests.
 
 Run on your server:
-    cd myforecaster-project
+    cd cbal-project
     pytest tests/test_step5d_phase3a.py -v
 """
 
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
+from cbal.dataset import TimeSeriesDataFrame
 
 import os, importlib.util
 if os.environ.get("MYFORECASTER_SKIP_TORCH", ""):
@@ -51,14 +51,14 @@ HP = {"max_epochs": 2, "batch_size": 16}
 # ===========================================================================
 class TestNHiTSNetwork:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.nhits import NHiTSNetwork
+        from cbal.models.deep_learning.nhits import NHiTSNetwork
         net = NHiTSNetwork(context_length=96, prediction_length=24,
                            n_stacks=2, hidden_size=64, n_mlp_layers=2)
         out = net(torch.randn(4, 96))
         assert out.shape == (4, 24)
 
     def test_hierarchical_pooling(self):
-        from myforecaster.models.deep_learning.nhits import NHiTSNetwork
+        from cbal.models.deep_learning.nhits import NHiTSNetwork
         net = NHiTSNetwork(context_length=96, prediction_length=24,
                            n_stacks=3, pooling_kernels=[1, 4, 8])
         assert len(net.blocks) == 3
@@ -67,7 +67,7 @@ class TestNHiTSNetwork:
 
     def test_backcast_forecast_theta_separation(self):
         """Per paper: backcast and forecast use different n_theta."""
-        from myforecaster.models.deep_learning.nhits import NHiTSBlock
+        from cbal.models.deep_learning.nhits import NHiTSBlock
         block = NHiTSBlock(context_length=96, prediction_length=24,
                            hidden_size=64, pooling_kernel=4)
         # backcast: context_length // pooling = 96 // 4 = 24
@@ -78,7 +78,7 @@ class TestNHiTSNetwork:
         assert block.n_theta_backcast != block.n_theta_forecast
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.nhits import NHiTSNetwork
+        from cbal.models.deep_learning.nhits import NHiTSNetwork
         net = NHiTSNetwork(context_length=64, prediction_length=12,
                            n_stacks=2, hidden_size=32)
         pred = net(torch.randn(2, 64))
@@ -89,7 +89,7 @@ class TestNHiTSNetwork:
 
 class TestNHiTSModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.nhits import NHiTSModel
+        from cbal.models.deep_learning.nhits import NHiTSModel
         train, _ = train_test
         m = NHiTSModel(freq="D", prediction_length=pred_length,
                         hyperparameters={**HP, "context_length": 64,
@@ -100,7 +100,7 @@ class TestNHiTSModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_score(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.nhits import NHiTSModel
+        from cbal.models.deep_learning.nhits import NHiTSModel
         train, test = train_test
         m = NHiTSModel(freq="D", prediction_length=pred_length,
                         hyperparameters={**HP, "context_length": 64,
@@ -109,8 +109,8 @@ class TestNHiTSModel:
         assert np.isfinite(m.score(test, metric="MAE"))
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.nhits import NHiTSModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.nhits import NHiTSModel
+        from cbal.models import MODEL_REGISTRY
         assert "N-HiTS" in MODEL_REGISTRY
 
 
@@ -119,21 +119,21 @@ class TestNHiTSModel:
 # ===========================================================================
 class TestTSMixerNetwork:
     def test_univariate_output_shape(self):
-        from myforecaster.models.deep_learning.tsmixer import TSMixerNetwork
+        from cbal.models.deep_learning.tsmixer import TSMixerNetwork
         net = TSMixerNetwork(context_length=96, prediction_length=24,
                              n_channels=1, d_ff=32, n_layers=2)
         out = net(torch.randn(4, 96))
         assert out.shape == (4, 24)
 
     def test_multivariate_output_shape(self):
-        from myforecaster.models.deep_learning.tsmixer import TSMixerNetwork
+        from cbal.models.deep_learning.tsmixer import TSMixerNetwork
         net = TSMixerNetwork(context_length=96, prediction_length=24,
                              n_channels=5, d_ff=32, n_layers=2, revin=False)
         out = net(torch.randn(4, 96, 5))
         assert out.shape == (4, 24, 5)
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.tsmixer import TSMixerNetwork
+        from cbal.models.deep_learning.tsmixer import TSMixerNetwork
         net = TSMixerNetwork(context_length=64, prediction_length=12,
                              d_ff=32, n_layers=2)
         pred = net(torch.randn(2, 64))
@@ -143,7 +143,7 @@ class TestTSMixerNetwork:
 
 class TestTSMixerModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.tsmixer import TSMixerModel
+        from cbal.models.deep_learning.tsmixer import TSMixerModel
         train, _ = train_test
         m = TSMixerModel(freq="D", prediction_length=pred_length,
                           hyperparameters={**HP, "context_length": 64,
@@ -154,7 +154,7 @@ class TestTSMixerModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_score(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.tsmixer import TSMixerModel
+        from cbal.models.deep_learning.tsmixer import TSMixerModel
         train, test = train_test
         m = TSMixerModel(freq="D", prediction_length=pred_length,
                           hyperparameters={**HP, "context_length": 64,
@@ -163,8 +163,8 @@ class TestTSMixerModel:
         assert np.isfinite(m.score(test, metric="MAE"))
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.tsmixer import TSMixerModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.tsmixer import TSMixerModel
+        from cbal.models import MODEL_REGISTRY
         assert "TSMixer" in MODEL_REGISTRY
 
 
@@ -173,21 +173,21 @@ class TestTSMixerModel:
 # ===========================================================================
 class TestSegRNNNetwork:
     def test_rmr_output_shape(self):
-        from myforecaster.models.deep_learning.segrnn import SegRNNNetwork
+        from cbal.models.deep_learning.segrnn import SegRNNNetwork
         net = SegRNNNetwork(context_length=96, prediction_length=24,
                             seg_len=12, d_model=64, strategy="rmr")
         out = net(torch.randn(4, 96))
         assert out.shape == (4, 24)
 
     def test_pmr_output_shape(self):
-        from myforecaster.models.deep_learning.segrnn import SegRNNNetwork
+        from cbal.models.deep_learning.segrnn import SegRNNNetwork
         net = SegRNNNetwork(context_length=96, prediction_length=24,
                             seg_len=12, d_model=64, strategy="pmr")
         out = net(torch.randn(4, 96))
         assert out.shape == (4, 24)
 
     def test_different_seg_lengths(self):
-        from myforecaster.models.deep_learning.segrnn import SegRNNNetwork
+        from cbal.models.deep_learning.segrnn import SegRNNNetwork
         for seg in [6, 12, 24]:
             for strat in ["rmr", "pmr"]:
                 net = SegRNNNetwork(context_length=96, prediction_length=24,
@@ -196,7 +196,7 @@ class TestSegRNNNetwork:
                 assert out.shape == (4, 24), f"Failed for seg={seg}, strategy={strat}"
 
     def test_gradient_flows_rmr(self):
-        from myforecaster.models.deep_learning.segrnn import SegRNNNetwork
+        from cbal.models.deep_learning.segrnn import SegRNNNetwork
         net = SegRNNNetwork(context_length=64, prediction_length=12,
                             seg_len=8, d_model=32, strategy="rmr")
         pred = net(torch.randn(2, 64))
@@ -204,7 +204,7 @@ class TestSegRNNNetwork:
         assert sum(1 for p in net.parameters() if p.grad is not None) > 0
 
     def test_gradient_flows_pmr(self):
-        from myforecaster.models.deep_learning.segrnn import SegRNNNetwork
+        from cbal.models.deep_learning.segrnn import SegRNNNetwork
         net = SegRNNNetwork(context_length=64, prediction_length=12,
                             seg_len=8, d_model=32, strategy="pmr")
         pred = net(torch.randn(2, 64))
@@ -214,7 +214,7 @@ class TestSegRNNNetwork:
 
 class TestSegRNNModel:
     def test_fit_predict_rmr(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.segrnn import SegRNNModel
+        from cbal.models.deep_learning.segrnn import SegRNNModel
         train, _ = train_test
         m = SegRNNModel(freq="D", prediction_length=pred_length,
                          hyperparameters={**HP, "context_length": 48,
@@ -226,7 +226,7 @@ class TestSegRNNModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_fit_predict_pmr(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.segrnn import SegRNNModel
+        from cbal.models.deep_learning.segrnn import SegRNNModel
         train, _ = train_test
         m = SegRNNModel(freq="D", prediction_length=pred_length,
                          hyperparameters={**HP, "context_length": 48,
@@ -238,7 +238,7 @@ class TestSegRNNModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_score(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.segrnn import SegRNNModel
+        from cbal.models.deep_learning.segrnn import SegRNNModel
         train, test = train_test
         m = SegRNNModel(freq="D", prediction_length=pred_length,
                          hyperparameters={**HP, "context_length": 48,
@@ -247,6 +247,6 @@ class TestSegRNNModel:
         assert np.isfinite(m.score(test, metric="MAE"))
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.segrnn import SegRNNModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.segrnn import SegRNNModel
+        from cbal.models import MODEL_REGISTRY
         assert "SegRNN" in MODEL_REGISTRY

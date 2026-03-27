@@ -1,7 +1,7 @@
 """Step 6: Ensemble model verification tests.
 
 Run on your server:
-    cd myforecaster-project
+    cd cbal-project
     pytest tests/test_step6_ensemble.py -v
 """
 
@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
-from myforecaster.models.ensemble import (
+from cbal.dataset import TimeSeriesDataFrame
+from cbal.models.ensemble import (
     WeightedEnsemble,
     SimpleAverageEnsemble,
     greedy_ensemble_selection,
@@ -48,7 +48,7 @@ def train_val_test(daily_tsdf, pred_length):
 @pytest.fixture
 def fitted_base_models(train_val_test, pred_length):
     train, val, test = train_val_test
-    from myforecaster.models.naive.models import NaiveModel, AverageModel, SeasonalNaiveModel
+    from cbal.models.naive.models import NaiveModel, AverageModel, SeasonalNaiveModel
 
     models = {}
     for ModelClass in [NaiveModel, AverageModel, SeasonalNaiveModel]:
@@ -63,13 +63,13 @@ def fitted_base_models(train_val_test, pred_length):
 # ===========================================================================
 class TestRegistration:
     def test_weighted_ensemble_registered(self):
-        from myforecaster.models import MODEL_REGISTRY
-        from myforecaster.models.ensemble import WeightedEnsemble  # noqa
+        from cbal.models import MODEL_REGISTRY
+        from cbal.models.ensemble import WeightedEnsemble  # noqa
         assert "WeightedEnsemble" in MODEL_REGISTRY
 
     def test_simple_average_registered(self):
-        from myforecaster.models import MODEL_REGISTRY
-        from myforecaster.models.ensemble import SimpleAverageEnsemble  # noqa
+        from cbal.models import MODEL_REGISTRY
+        from cbal.models.ensemble import SimpleAverageEnsemble  # noqa
         assert "SimpleAverage" in MODEL_REGISTRY
 
 
@@ -195,8 +195,8 @@ class TestWeightedEnsemble:
 class TestGreedySelection:
     def test_single_model(self, train_val_test, fitted_base_models, pred_length):
         _, val, _ = train_val_test
-        from myforecaster.metrics.scorers import get_metric
-        from myforecaster.models.ensemble import _compute_per_item_predictions
+        from cbal.metrics.scorers import get_metric
+        from cbal.models.ensemble import _compute_per_item_predictions
 
         single = {k: v for k, v in list(fitted_base_models.items())[:1]}
         name = list(single.keys())[0]
@@ -210,8 +210,8 @@ class TestGreedySelection:
 
     def test_weights_sum_to_one(self, train_val_test, fitted_base_models, pred_length):
         _, val, _ = train_val_test
-        from myforecaster.metrics.scorers import get_metric
-        from myforecaster.models.ensemble import _compute_per_item_predictions
+        from cbal.metrics.scorers import get_metric
+        from cbal.models.ensemble import _compute_per_item_predictions
 
         preds = {}
         for name, model in fitted_base_models.items():

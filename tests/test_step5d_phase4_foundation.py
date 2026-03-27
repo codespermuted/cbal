@@ -5,7 +5,7 @@ These tests verify the wrapper structure WITHOUT loading actual models
 should be run separately on GPU servers.
 
 Run on your server:
-    cd myforecaster-project
+    cd cbal-project
     pytest tests/test_step5d_phase4_foundation.py -v
 """
 
@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
+from cbal.dataset import TimeSeriesDataFrame
 
 
 # ---------------------------------------------------------------------------
@@ -48,31 +48,31 @@ class TestRegistration:
     def test_foundation_models_importable(self):
         """Foundation module should be importable without heavy deps."""
         # This import triggers register_model calls
-        from myforecaster.models import foundation  # noqa: F401
+        from cbal.models import foundation  # noqa: F401
 
     def test_chronos2_registered(self):
-        from myforecaster.models import foundation  # noqa: F401
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models import foundation  # noqa: F401
+        from cbal.models import MODEL_REGISTRY
         assert "Chronos-2" in MODEL_REGISTRY
 
     def test_timesfm_registered(self):
-        from myforecaster.models import foundation  # noqa: F401
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models import foundation  # noqa: F401
+        from cbal.models import MODEL_REGISTRY
         assert "TimesFM" in MODEL_REGISTRY
 
     def test_moirai_registered(self):
-        from myforecaster.models import foundation  # noqa: F401
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models import foundation  # noqa: F401
+        from cbal.models import MODEL_REGISTRY
         assert "Moirai" in MODEL_REGISTRY
 
     def test_ttm_registered(self):
-        from myforecaster.models import foundation  # noqa: F401
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models import foundation  # noqa: F401
+        from cbal.models import MODEL_REGISTRY
         assert "TTM" in MODEL_REGISTRY
 
     def test_toto_registered(self):
-        from myforecaster.models import foundation  # noqa: F401
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models import foundation  # noqa: F401
+        from cbal.models import MODEL_REGISTRY
         assert "Toto" in MODEL_REGISTRY
 
 
@@ -81,18 +81,18 @@ class TestRegistration:
 # ===========================================================================
 class TestWrapperStructure:
     def test_chronos2_instantiation(self, pred_length):
-        from myforecaster.models.foundation import Chronos2Model
+        from cbal.models.foundation import Chronos2Model
         m = Chronos2Model(freq="D", prediction_length=pred_length)
         assert m.prediction_length == pred_length
         assert not m._is_fitted
 
     def test_timesfm_instantiation(self, pred_length):
-        from myforecaster.models.foundation import TimesFMModel
+        from cbal.models.foundation import TimesFMModel
         m = TimesFMModel(freq="D", prediction_length=pred_length)
         assert m.prediction_length == pred_length
 
     def test_moirai_instantiation(self, pred_length):
-        from myforecaster.models.foundation import MoiraiModel
+        from cbal.models.foundation import MoiraiModel
         m = MoiraiModel(
             freq="D", prediction_length=pred_length,
             hyperparameters={"model_size": "small", "model_version": "moirai2"},
@@ -100,7 +100,7 @@ class TestWrapperStructure:
         assert m.get_hyperparameter("model_size") == "small"
 
     def test_ttm_instantiation(self, pred_length):
-        from myforecaster.models.foundation import TTMModel
+        from cbal.models.foundation import TTMModel
         m = TTMModel(
             freq="D", prediction_length=pred_length,
             hyperparameters={"context_length": 512},
@@ -108,7 +108,7 @@ class TestWrapperStructure:
         assert m.get_hyperparameter("context_length") == 512
 
     def test_toto_instantiation(self, pred_length):
-        from myforecaster.models.foundation import TotoModel
+        from cbal.models.foundation import TotoModel
         m = TotoModel(freq="D", prediction_length=pred_length)
         assert m.prediction_length == pred_length
 
@@ -117,7 +117,7 @@ class TestFitIsNoOp:
     """Foundation models' fit() should just store metadata, not train."""
 
     def test_chronos2_fit(self, train_test, pred_length):
-        from myforecaster.models.foundation import Chronos2Model
+        from cbal.models.foundation import Chronos2Model
         train, _ = train_test
         m = Chronos2Model(freq="D", prediction_length=pred_length)
         m.fit(train)
@@ -125,7 +125,7 @@ class TestFitIsNoOp:
         assert m.freq == "D"
 
     def test_timesfm_fit(self, train_test, pred_length):
-        from myforecaster.models.foundation import TimesFMModel
+        from cbal.models.foundation import TimesFMModel
         train, _ = train_test
         m = TimesFMModel(freq="D", prediction_length=pred_length)
         m.fit(train)
@@ -134,13 +134,13 @@ class TestFitIsNoOp:
 
 class TestDeviceDetection:
     def test_device_auto(self, pred_length):
-        from myforecaster.models.foundation import Chronos2Model
+        from cbal.models.foundation import Chronos2Model
         m = Chronos2Model(freq="D", prediction_length=pred_length)
         device = m._get_device()
         assert device in ("cuda", "cpu")
 
     def test_device_override(self, pred_length):
-        from myforecaster.models.foundation import Chronos2Model
+        from cbal.models.foundation import Chronos2Model
         m = Chronos2Model(
             freq="D", prediction_length=pred_length,
             hyperparameters={"device": "cpu"},
@@ -150,23 +150,23 @@ class TestDeviceDetection:
 
 class TestDefaultHyperparameters:
     def test_chronos2_defaults(self, pred_length):
-        from myforecaster.models.foundation import Chronos2Model
+        from cbal.models.foundation import Chronos2Model
         m = Chronos2Model(freq="D", prediction_length=pred_length)
         assert m.get_hyperparameter("model_id") == "amazon/chronos-2"
         assert m.get_hyperparameter("batch_size") == 32
 
     def test_timesfm_defaults(self, pred_length):
-        from myforecaster.models.foundation import TimesFMModel
+        from cbal.models.foundation import TimesFMModel
         m = TimesFMModel(freq="D", prediction_length=pred_length)
         assert "timesfm" in m.get_hyperparameter("model_id")
 
     def test_moirai_defaults(self, pred_length):
-        from myforecaster.models.foundation import MoiraiModel
+        from cbal.models.foundation import MoiraiModel
         m = MoiraiModel(freq="D", prediction_length=pred_length)
         assert m.get_hyperparameter("model_version") == "moirai2"
 
     def test_ttm_defaults(self, pred_length):
-        from myforecaster.models.foundation import TTMModel
+        from cbal.models.foundation import TTMModel
         m = TTMModel(freq="D", prediction_length=pred_length)
         assert "granite" in m.get_hyperparameter("model_id")
 
@@ -182,7 +182,7 @@ class TestChronos2Integration:
         pytest.importorskip("chronos", reason="chronos-forecasting not installed")
 
     def test_predict(self, train_test, pred_length):
-        from myforecaster.models.foundation import Chronos2Model
+        from cbal.models.foundation import Chronos2Model
         train, _ = train_test
         m = Chronos2Model(
             freq="D", prediction_length=pred_length,
@@ -201,7 +201,7 @@ class TestTimesFMIntegration:
         pytest.importorskip("timesfm", reason="timesfm not installed")
 
     def test_predict(self, train_test, pred_length):
-        from myforecaster.models.foundation import TimesFMModel
+        from cbal.models.foundation import TimesFMModel
         train, _ = train_test
         m = TimesFMModel(freq="D", prediction_length=pred_length)
         m.fit(train)
@@ -216,7 +216,7 @@ class TestTTMIntegration:
         pytest.importorskip("tsfm_public", reason="tsfm_public not installed")
 
     def test_predict(self, train_test, pred_length):
-        from myforecaster.models.foundation import TTMModel
+        from cbal.models.foundation import TTMModel
         train, _ = train_test
         m = TTMModel(
             freq="D", prediction_length=pred_length,

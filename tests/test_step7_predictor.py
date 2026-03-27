@@ -14,8 +14,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame
-from myforecaster.predictor import (
+from cbal.dataset.ts_dataframe import TimeSeriesDataFrame
+from cbal.predictor import (
     TimeSeriesPredictor, _resolve_preset, _resolve_hpo_kwargs,
     _auto_context_length, _infer_seasonal_period,
 )

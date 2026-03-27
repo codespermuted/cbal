@@ -1,7 +1,7 @@
 """Step 5-d Phase 2: TFT (Temporal Fusion Transformer) verification tests.
 
 Run on your server:
-    cd myforecaster-project
+    cd cbal-project
     pytest tests/test_step5d_tft.py -v
 """
 
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
+from cbal.dataset import TimeSeriesDataFrame
 
 import os, importlib.util
 if os.environ.get("MYFORECASTER_SKIP_TORCH", ""):
@@ -51,14 +51,14 @@ def train_test(daily_tsdf, pred_length):
 # ---------------------------------------------------------------------------
 class TestGRN:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.tft import GRN
+        from cbal.models.deep_learning.tft import GRN
         grn = GRN(d_in=32, d_hidden=64, d_out=32)
         x = torch.randn(4, 10, 32)
         out = grn(x)
         assert out.shape == (4, 10, 32)
 
     def test_with_context(self):
-        from myforecaster.models.deep_learning.tft import GRN
+        from cbal.models.deep_learning.tft import GRN
         grn = GRN(d_in=32, d_hidden=64, d_out=32, d_context=16)
         x = torch.randn(4, 10, 32)
         ctx = torch.randn(4, 10, 16)
@@ -66,7 +66,7 @@ class TestGRN:
         assert out.shape == (4, 10, 32)
 
     def test_dimension_change(self):
-        from myforecaster.models.deep_learning.tft import GRN
+        from cbal.models.deep_learning.tft import GRN
         grn = GRN(d_in=32, d_hidden=64, d_out=48)
         x = torch.randn(4, 10, 32)
         out = grn(x)
@@ -75,14 +75,14 @@ class TestGRN:
 
 class TestVSN:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.tft import VariableSelectionNetwork
+        from cbal.models.deep_learning.tft import VariableSelectionNetwork
         vsn = VariableSelectionNetwork(n_vars=3, d_model=32, d_input_per_var=32)
         x_list = [torch.randn(4, 10, 32) for _ in range(3)]
         out = vsn(x_list)
         assert out.shape == (4, 10, 32)
 
     def test_with_context(self):
-        from myforecaster.models.deep_learning.tft import VariableSelectionNetwork
+        from cbal.models.deep_learning.tft import VariableSelectionNetwork
         vsn = VariableSelectionNetwork(n_vars=2, d_model=32, d_input_per_var=32, d_context=16)
         x_list = [torch.randn(4, 10, 32) for _ in range(2)]
         ctx = torch.randn(4, 16)
@@ -92,7 +92,7 @@ class TestVSN:
 
 class TestInterpretableAttention:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.tft import InterpretableMultiHeadAttention
+        from cbal.models.deep_learning.tft import InterpretableMultiHeadAttention
         attn = InterpretableMultiHeadAttention(d_model=32, n_heads=4)
         q = torch.randn(4, 7, 32)   # decoder
         k = torch.randn(4, 30, 32)  # encoder
@@ -102,7 +102,7 @@ class TestInterpretableAttention:
         assert attn_weights.shape == (4, 7, 30)
 
     def test_attention_sums_to_one(self):
-        from myforecaster.models.deep_learning.tft import InterpretableMultiHeadAttention
+        from cbal.models.deep_learning.tft import InterpretableMultiHeadAttention
         attn = InterpretableMultiHeadAttention(d_model=32, n_heads=4)
         attn.eval()  # disable dropout so softmax sums to 1
         q = torch.randn(4, 7, 32)
@@ -115,7 +115,7 @@ class TestInterpretableAttention:
 
 class TestQuantileLoss:
     def test_perfect_prediction(self):
-        from myforecaster.models.deep_learning.tft import QuantileLoss
+        from cbal.models.deep_learning.tft import QuantileLoss
         loss_fn = QuantileLoss([0.1, 0.5, 0.9])
         target = torch.randn(4, 7)
         pred = target.unsqueeze(-1).expand(-1, -1, 3)  # perfect for all quantiles
@@ -123,7 +123,7 @@ class TestQuantileLoss:
         assert loss.item() < 1e-6
 
     def test_loss_is_positive(self):
-        from myforecaster.models.deep_learning.tft import QuantileLoss
+        from cbal.models.deep_learning.tft import QuantileLoss
         loss_fn = QuantileLoss([0.1, 0.5, 0.9])
         pred = torch.randn(4, 7, 3)
         target = torch.randn(4, 7)
@@ -136,7 +136,7 @@ class TestQuantileLoss:
 # ---------------------------------------------------------------------------
 class TestTFTNetwork:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.tft import TFTNetwork
+        from cbal.models.deep_learning.tft import TFTNetwork
         net = TFTNetwork(
             context_length=30, prediction_length=7,
             d_model=32, n_heads=4, n_lstm_layers=1, n_quantiles=3,
@@ -150,7 +150,7 @@ class TestTFTNetwork:
         assert out.shape == (B, H, 3)
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.tft import TFTNetwork
+        from cbal.models.deep_learning.tft import TFTNetwork
         net = TFTNetwork(
             context_length=30, prediction_length=7,
             d_model=32, n_heads=4, n_lstm_layers=1,
@@ -167,7 +167,7 @@ class TestTFTNetwork:
         assert grad_count > 0
 
     def test_different_quantile_count(self):
-        from myforecaster.models.deep_learning.tft import TFTNetwork
+        from cbal.models.deep_learning.tft import TFTNetwork
         net = TFTNetwork(
             context_length=30, prediction_length=7,
             d_model=32, n_heads=4, n_lstm_layers=1, n_quantiles=5,
@@ -186,7 +186,7 @@ class TestTFTNetwork:
 # ---------------------------------------------------------------------------
 class TestTFTModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.tft import TFTModel
+        from cbal.models.deep_learning.tft import TFTModel
         train, _ = train_test
         m = TFTModel(
             freq="D", prediction_length=pred_length,
@@ -205,7 +205,7 @@ class TestTFTModel:
         assert "0.9" in pred.columns
 
     def test_quantile_ordering(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.tft import TFTModel
+        from cbal.models.deep_learning.tft import TFTModel
         train, _ = train_test
         m = TFTModel(
             freq="D", prediction_length=pred_length,
@@ -224,7 +224,7 @@ class TestTFTModel:
         assert ordering_ratio > 0.8  # allow some tolerance for 3 epochs
 
     def test_prediction_values_are_finite(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.tft import TFTModel
+        from cbal.models.deep_learning.tft import TFTModel
         train, _ = train_test
         m = TFTModel(
             freq="D", prediction_length=pred_length,
@@ -238,7 +238,7 @@ class TestTFTModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_score_is_finite(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.tft import TFTModel
+        from cbal.models.deep_learning.tft import TFTModel
         train, test = train_test
         m = TFTModel(
             freq="D", prediction_length=pred_length,
@@ -252,12 +252,12 @@ class TestTFTModel:
         assert np.isfinite(score)
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.tft import TFTModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.tft import TFTModel
+        from cbal.models import MODEL_REGISTRY
         assert "TFT" in MODEL_REGISTRY
 
     def test_custom_quantiles(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.tft import TFTModel
+        from cbal.models.deep_learning.tft import TFTModel
         train, _ = train_test
         m = TFTModel(
             freq="D", prediction_length=pred_length,
@@ -280,7 +280,7 @@ class TestTFTPaperFeatures:
     """Verify TFT implements all features from Lim et al. (2021)."""
 
     def test_static_covariate_encoder_produces_4_contexts(self):
-        from myforecaster.models.deep_learning.tft import StaticCovariateEncoder
+        from cbal.models.deep_learning.tft import StaticCovariateEncoder
         enc = StaticCovariateEncoder(d_static=16, d_model=32)
         static = torch.randn(4, 16)
         c_s, c_e, c_h, c_c = enc(static)
@@ -292,7 +292,7 @@ class TestTFTPaperFeatures:
         assert not torch.allclose(c_s, c_e)
 
     def test_entity_embedding_in_network(self):
-        from myforecaster.models.deep_learning.tft import TFTNetwork
+        from cbal.models.deep_learning.tft import TFTNetwork
         net = TFTNetwork(context_length=20, prediction_length=5,
                          d_model=32, n_heads=4, n_items=5, embedding_dim=8)
         assert hasattr(net, 'entity_embedding')
@@ -300,7 +300,7 @@ class TestTFTPaperFeatures:
         assert net.entity_embedding.embedding_dim == 8
 
     def test_different_items_produce_different_outputs(self):
-        from myforecaster.models.deep_learning.tft import TFTNetwork
+        from cbal.models.deep_learning.tft import TFTNetwork
         net = TFTNetwork(context_length=20, prediction_length=5,
                          d_model=32, n_heads=4, n_items=5, embedding_dim=8)
         net.eval()
@@ -314,14 +314,14 @@ class TestTFTPaperFeatures:
         assert diff > 0.001, "Different items should produce different outputs"
 
     def test_3_separate_vsns_exist(self):
-        from myforecaster.models.deep_learning.tft import TFTNetwork
+        from cbal.models.deep_learning.tft import TFTNetwork
         net = TFTNetwork(context_length=20, prediction_length=5, d_model=32, n_heads=4)
         assert hasattr(net, 'vsn_past_observed')
         assert hasattr(net, 'vsn_past_known')
         assert hasattr(net, 'vsn_future_known')
 
     def test_lstm_init_projections_exist(self):
-        from myforecaster.models.deep_learning.tft import TFTNetwork
+        from cbal.models.deep_learning.tft import TFTNetwork
         net = TFTNetwork(context_length=20, prediction_length=5,
                          d_model=32, n_heads=4, n_lstm_layers=2)
         assert hasattr(net, 'h_init_proj')

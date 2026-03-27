@@ -1,7 +1,7 @@
 """Step 5-d Phase 2.5: SSM/Mamba models (S-Mamba + MambaTS) verification tests.
 
 Run on your server:
-    cd myforecaster-project
+    cd cbal-project
     pytest tests/test_step5d_mamba.py -v
 """
 
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
+from cbal.dataset import TimeSeriesDataFrame
 
 import os, importlib.util
 if os.environ.get("MYFORECASTER_SKIP_TORCH", ""):
@@ -51,14 +51,14 @@ def train_test(daily_tsdf, pred_length):
 # ---------------------------------------------------------------------------
 class TestSelectiveSSM:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.layers.mamba import SelectiveSSM
+        from cbal.models.deep_learning.layers.mamba import SelectiveSSM
         ssm = SelectiveSSM(d_inner=64, d_state=16)
         x = torch.randn(4, 20, 64)
         out = ssm(x)
         assert out.shape == (4, 20, 64)
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.layers.mamba import SelectiveSSM
+        from cbal.models.deep_learning.layers.mamba import SelectiveSSM
         ssm = SelectiveSSM(d_inner=32, d_state=8)
         x = torch.randn(2, 10, 32, requires_grad=True)
         out = ssm(x)
@@ -68,21 +68,21 @@ class TestSelectiveSSM:
 
 class TestMambaBlock:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.layers.mamba import MambaBlock
+        from cbal.models.deep_learning.layers.mamba import MambaBlock
         block = MambaBlock(d_model=64, d_state=16, expand=2)
         x = torch.randn(4, 20, 64)
         out = block(x)
         assert out.shape == (4, 20, 64)
 
     def test_without_causal_conv(self):
-        from myforecaster.models.deep_learning.layers.mamba import MambaBlock
+        from cbal.models.deep_learning.layers.mamba import MambaBlock
         block = MambaBlock(d_model=64, d_state=16, use_causal_conv=False)
         x = torch.randn(4, 20, 64)
         out = block(x)
         assert out.shape == (4, 20, 64)
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.layers.mamba import MambaBlock
+        from cbal.models.deep_learning.layers.mamba import MambaBlock
         block = MambaBlock(d_model=32, d_state=8)
         x = torch.randn(2, 10, 32)
         out = block(x)
@@ -93,14 +93,14 @@ class TestMambaBlock:
 
 class TestBidirectionalMambaBlock:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.layers.mamba import BidirectionalMambaBlock
+        from cbal.models.deep_learning.layers.mamba import BidirectionalMambaBlock
         block = BidirectionalMambaBlock(d_model=64, d_state=16)
         x = torch.randn(4, 20, 64)
         out = block(x)
         assert out.shape == (4, 20, 64)
 
     def test_residual_connection(self):
-        from myforecaster.models.deep_learning.layers.mamba import BidirectionalMambaBlock
+        from cbal.models.deep_learning.layers.mamba import BidirectionalMambaBlock
         block = BidirectionalMambaBlock(d_model=32, d_state=8)
         block.eval()
         x = torch.randn(2, 5, 32)
@@ -115,7 +115,7 @@ class TestBidirectionalMambaBlock:
 # ---------------------------------------------------------------------------
 class TestSMambaNetwork:
     def test_univariate_output_shape(self):
-        from myforecaster.models.deep_learning.s_mamba import SMambaNetwork
+        from cbal.models.deep_learning.s_mamba import SMambaNetwork
         net = SMambaNetwork(
             context_length=96, prediction_length=24,
             n_variates=1, d_model=32, d_state=8, n_layers=1, d_ff=64,
@@ -125,7 +125,7 @@ class TestSMambaNetwork:
         assert out.shape == (4, 24)
 
     def test_multivariate_output_shape(self):
-        from myforecaster.models.deep_learning.s_mamba import SMambaNetwork
+        from cbal.models.deep_learning.s_mamba import SMambaNetwork
         net = SMambaNetwork(
             context_length=96, prediction_length=24,
             n_variates=3, d_model=32, d_state=8, n_layers=1, d_ff=64,
@@ -135,7 +135,7 @@ class TestSMambaNetwork:
         assert out.shape == (4, 24, 3)
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.s_mamba import SMambaNetwork
+        from cbal.models.deep_learning.s_mamba import SMambaNetwork
         net = SMambaNetwork(
             context_length=64, prediction_length=12,
             d_model=32, d_state=8, n_layers=1,
@@ -151,7 +151,7 @@ class TestSMambaNetwork:
 
 class TestSMambaModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.s_mamba import SMambaModel
+        from cbal.models.deep_learning.s_mamba import SMambaModel
         train, _ = train_test
         m = SMambaModel(
             freq="D", prediction_length=pred_length,
@@ -168,7 +168,7 @@ class TestSMambaModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_score_is_finite(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.s_mamba import SMambaModel
+        from cbal.models.deep_learning.s_mamba import SMambaModel
         train, test = train_test
         m = SMambaModel(
             freq="D", prediction_length=pred_length,
@@ -182,8 +182,8 @@ class TestSMambaModel:
         assert np.isfinite(score)
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.s_mamba import SMambaModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.s_mamba import SMambaModel
+        from cbal.models import MODEL_REGISTRY
         assert "S-Mamba" in MODEL_REGISTRY
 
 
@@ -192,7 +192,7 @@ class TestSMambaModel:
 # ---------------------------------------------------------------------------
 class TestTemporalMambaBlock:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.mambats import TemporalMambaBlock
+        from cbal.models.deep_learning.mambats import TemporalMambaBlock
         tmb = TemporalMambaBlock(d_model=64, d_state=16)
         x = torch.randn(4, 20, 64)
         out = tmb(x)
@@ -201,7 +201,7 @@ class TestTemporalMambaBlock:
 
 class TestMambaTSNetwork:
     def test_univariate_output_shape(self):
-        from myforecaster.models.deep_learning.mambats import MambaTSNetwork
+        from cbal.models.deep_learning.mambats import MambaTSNetwork
         net = MambaTSNetwork(
             context_length=96, prediction_length=24,
             d_model=32, d_state=8, n_layers=1, d_ff=64,
@@ -212,7 +212,7 @@ class TestMambaTSNetwork:
         assert out.shape == (4, 24)
 
     def test_n_patches(self):
-        from myforecaster.models.deep_learning.mambats import MambaTSNetwork
+        from cbal.models.deep_learning.mambats import MambaTSNetwork
         net = MambaTSNetwork(
             context_length=96, prediction_length=24,
             patch_len=16, stride=8,
@@ -220,7 +220,7 @@ class TestMambaTSNetwork:
         assert net.n_patches == 11  # (96 - 16) / 8 + 1
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.mambats import MambaTSNetwork
+        from cbal.models.deep_learning.mambats import MambaTSNetwork
         net = MambaTSNetwork(
             context_length=64, prediction_length=12,
             d_model=32, d_state=8, n_layers=1,
@@ -237,7 +237,7 @@ class TestMambaTSNetwork:
 
 class TestMambaTSModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.mambats import MambaTSModel
+        from cbal.models.deep_learning.mambats import MambaTSModel
         train, _ = train_test
         m = MambaTSModel(
             freq="D", prediction_length=pred_length,
@@ -255,7 +255,7 @@ class TestMambaTSModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_score_is_finite(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.mambats import MambaTSModel
+        from cbal.models.deep_learning.mambats import MambaTSModel
         train, test = train_test
         m = MambaTSModel(
             freq="D", prediction_length=pred_length,
@@ -270,8 +270,8 @@ class TestMambaTSModel:
         assert np.isfinite(score)
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.mambats import MambaTSModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.mambats import MambaTSModel
+        from cbal.models import MODEL_REGISTRY
         assert "MambaTS" in MODEL_REGISTRY
 
 
@@ -281,7 +281,7 @@ class TestMambaTSModel:
 class TestVPT:
     def test_vpt_shuffles_during_training(self):
         """VPT should randomly permute variable order during training."""
-        from myforecaster.models.deep_learning.mambats import MambaTSNetwork
+        from cbal.models.deep_learning.mambats import MambaTSNetwork
         net = MambaTSNetwork(
             context_length=32, prediction_length=8,
             n_variates=4, d_model=16, d_state=4, n_layers=1,
@@ -297,7 +297,7 @@ class TestVPT:
 
     def test_vpt_disabled(self):
         """Without VPT, no permutation should happen."""
-        from myforecaster.models.deep_learning.mambats import MambaTSNetwork
+        from cbal.models.deep_learning.mambats import MambaTSNetwork
         net = MambaTSNetwork(
             context_length=32, prediction_length=8,
             n_variates=3, d_model=16, d_state=4, n_layers=1,
@@ -309,7 +309,7 @@ class TestVPT:
         assert net._last_perm is None
 
     def test_multivariate_output_shape(self):
-        from myforecaster.models.deep_learning.mambats import MambaTSNetwork
+        from cbal.models.deep_learning.mambats import MambaTSNetwork
         net = MambaTSNetwork(
             context_length=64, prediction_length=12,
             n_variates=5, d_model=32, d_state=8, n_layers=1,
@@ -323,7 +323,7 @@ class TestVPT:
 class TestVAST:
     def test_vast_adjacency_update(self):
         """VAST should accumulate adjacency information."""
-        from myforecaster.models.deep_learning.mambats import VAST
+        from cbal.models.deep_learning.mambats import VAST
         vast = VAST(n_variates=4)
         assert vast.count == 0
 
@@ -336,7 +336,7 @@ class TestVAST:
 
     def test_vast_solve_order(self):
         """VAST should return a valid permutation."""
-        from myforecaster.models.deep_learning.mambats import VAST
+        from cbal.models.deep_learning.mambats import VAST
         vast = VAST(n_variates=4)
         # Add some data
         for _ in range(20):
@@ -348,7 +348,7 @@ class TestVAST:
 
     def test_vast_used_at_inference(self):
         """At eval time with trained VAST, network uses solved order."""
-        from myforecaster.models.deep_learning.mambats import MambaTSNetwork
+        from cbal.models.deep_learning.mambats import MambaTSNetwork
         net = MambaTSNetwork(
             context_length=32, prediction_length=8,
             n_variates=3, d_model=16, d_state=4, n_layers=1,

@@ -14,8 +14,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame
-from myforecaster.predictor import TimeSeriesPredictor
+from cbal.dataset.ts_dataframe import TimeSeriesDataFrame
+from cbal.predictor import TimeSeriesPredictor
 
 
 # ---------------------------------------------------------------------------
@@ -126,29 +126,29 @@ class TestSaveLoad:
 class TestCLI:
     def test_main_help(self, capsys):
         """Test that main() prints help with no args."""
-        from myforecaster.cli import main
+        from cbal.cli import main
         import sys
         old_argv = sys.argv
-        sys.argv = ["myforecaster"]
+        sys.argv = ["cbal"]
         try:
             main()
         finally:
             sys.argv = old_argv
         captured = capsys.readouterr()
-        assert "myforecaster" in captured.out.lower() or "usage" in captured.out.lower()
+        assert "cbal" in captured.out.lower() or "usage" in captured.out.lower()
 
     def test_cmd_info(self, capsys):
         """Test info command prints dependency table."""
-        from myforecaster.cli import _cmd_info
+        from cbal.cli import _cmd_info
         _cmd_info(None)
         captured = capsys.readouterr()
-        assert "MyForecaster" in captured.out
+        assert "C-BAL" in captured.out
         assert "numpy" in captured.out
 
     def test_fit_and_predict_functions(self, sample_data, tmp_path):
         """Test _cmd_fit / _cmd_predict via argparse Namespace."""
         import types
-        from myforecaster.cli import _cmd_fit, _cmd_predict
+        from cbal.cli import _cmd_fit, _cmd_predict
 
         # Write CSV
         csv_path = str(tmp_path / "train.csv")
@@ -178,7 +178,7 @@ class TestCLI:
 
     def test_leaderboard_function(self, saved_predictor_path, capsys):
         import types
-        from myforecaster.cli import _cmd_leaderboard
+        from cbal.cli import _cmd_leaderboard
         args = types.SimpleNamespace(predictor=saved_predictor_path)
         _cmd_leaderboard(args)
         captured = capsys.readouterr()
@@ -191,13 +191,13 @@ class TestCLI:
 
 class TestServing:
     def test_create_app(self, saved_predictor_path):
-        from myforecaster.serving.app import create_app
+        from cbal.serving.app import create_app
         app = create_app(saved_predictor_path)
         assert app is not None
-        assert app.title == "MyForecaster API"
+        assert app.title == "C-BAL API"
 
     def test_health_endpoint(self, saved_predictor_path):
-        from myforecaster.serving.app import create_app
+        from cbal.serving.app import create_app
         from httpx import ASGITransport, AsyncClient
         import asyncio
 
@@ -215,7 +215,7 @@ class TestServing:
         asyncio.run(_test())
 
     def test_info_endpoint(self, saved_predictor_path):
-        from myforecaster.serving.app import create_app
+        from cbal.serving.app import create_app
         from httpx import ASGITransport, AsyncClient
         import asyncio
 
@@ -234,7 +234,7 @@ class TestServing:
         asyncio.run(_test())
 
     def test_leaderboard_endpoint(self, saved_predictor_path):
-        from myforecaster.serving.app import create_app
+        from cbal.serving.app import create_app
         from httpx import ASGITransport, AsyncClient
         import asyncio
 
@@ -254,7 +254,7 @@ class TestServing:
         asyncio.run(_test())
 
     def test_predict_endpoint(self, saved_predictor_path, sample_data):
-        from myforecaster.serving.app import create_app
+        from cbal.serving.app import create_app
         from httpx import ASGITransport, AsyncClient
         import asyncio, json
 
@@ -282,7 +282,7 @@ class TestServing:
         asyncio.run(_test())
 
     def test_predict_invalid_data(self, saved_predictor_path):
-        from myforecaster.serving.app import create_app
+        from cbal.serving.app import create_app
         from httpx import ASGITransport, AsyncClient
         import asyncio
 
@@ -299,7 +299,7 @@ class TestServing:
         asyncio.run(_test())
 
     def test_score_endpoint(self, saved_predictor_path, sample_data):
-        from myforecaster.serving.app import create_app
+        from cbal.serving.app import create_app
         from httpx import ASGITransport, AsyncClient
         import asyncio, json
 
@@ -328,11 +328,11 @@ class TestServing:
 
 class TestServingImport:
     def test_serving_init_imports(self):
-        import myforecaster.serving
-        assert hasattr(myforecaster.serving, "__doc__")
+        import cbal.serving
+        assert hasattr(cbal.serving, "__doc__")
 
     def test_create_app_exists(self):
-        from myforecaster.serving.app import create_app
+        from cbal.serving.app import create_app
         assert callable(create_app)
 
 

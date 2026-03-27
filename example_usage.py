@@ -1,5 +1,5 @@
 """
-myforecaster 패키지 활용 예시
+cbal 패키지 활용 예시
 
 설치:  pip install -e ".[stats]"
 실행:  python example_usage.py
@@ -12,7 +12,7 @@ import pandas as pd
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 1. Import
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-from myforecaster import TimeSeriesPredictor, TimeSeriesDataFrame
+from cbal import TimeSeriesPredictor, TimeSeriesDataFrame
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 2. 목 데이터 (5매장 × 180일)

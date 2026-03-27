@@ -4,14 +4,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
-from myforecaster.models import MODEL_REGISTRY, list_models
-from myforecaster.models.tabular import (
+from cbal.dataset import TimeSeriesDataFrame
+from cbal.models import MODEL_REGISTRY, list_models
+from cbal.models.tabular import (
     RecursiveTabularModel,
     DirectTabularModel,
     list_tabular_backends,
 )
-from myforecaster.models.tabular.features import (
+from cbal.models.tabular.features import (
     build_feature_matrix,
     create_lag_features,
     create_rolling_features,

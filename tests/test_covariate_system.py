@@ -11,8 +11,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame, ITEMID, TARGET, TIMESTAMP
-from myforecaster.models.wrappers import TargetScaler, CovariateRegressor
+from cbal.dataset.ts_dataframe import TimeSeriesDataFrame, ITEMID, TARGET, TIMESTAMP
+from cbal.models.wrappers import TargetScaler, CovariateRegressor
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +254,7 @@ class TestCovariateRegressor:
 
 class TestPredictorScaler:
     def test_fit_with_target_scaler(self, plain_data):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         p = TimeSeriesPredictor(prediction_length=7, eval_metric="MAE")
         p.fit(
             plain_data,
@@ -269,7 +269,7 @@ class TestPredictorScaler:
         assert p._target_scaler.method == "standard"
 
     def test_predict_with_scaler(self, plain_data):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         p = TimeSeriesPredictor(prediction_length=7, eval_metric="MAE")
         p.fit(
             plain_data,
@@ -287,7 +287,7 @@ class TestPredictorScaler:
         assert 0.1 * orig_mean < pred_mean < 10 * orig_mean
 
     def test_no_scaler_by_default(self, plain_data):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         p = TimeSeriesPredictor(prediction_length=7, eval_metric="MAE")
         p.fit(
             plain_data,
@@ -296,7 +296,7 @@ class TestPredictorScaler:
         assert p._target_scaler is None
 
     def test_save_load_with_scaler(self, plain_data):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         p = TimeSeriesPredictor(prediction_length=7, eval_metric="MAE")
         p.fit(
             plain_data,
@@ -322,7 +322,7 @@ class TestPredictorScaler:
 
 class TestPredictorCovRegressor:
     def test_fit_with_cov_regressor(self, cov_data):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         p = TimeSeriesPredictor(
             prediction_length=7, eval_metric="MAE",
             known_covariates_names=["promotion", "is_weekend"],
@@ -340,7 +340,7 @@ class TestPredictorCovRegressor:
         assert p._cov_regressor._is_fitted
 
     def test_no_cov_regressor_by_default(self, plain_data):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         p = TimeSeriesPredictor(prediction_length=7, eval_metric="MAE")
         p.fit(
             plain_data,
@@ -355,7 +355,7 @@ class TestPredictorCovRegressor:
 
 class TestCombinedScalerRegressor:
     def test_both_together(self, cov_data):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         p = TimeSeriesPredictor(
             prediction_length=7, eval_metric="MAE",
             known_covariates_names=["promotion", "is_weekend"],

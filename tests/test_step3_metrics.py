@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from myforecaster.metrics import (
+from cbal.metrics import (
     MAE,
     MAPE,
     MASE,

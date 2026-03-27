@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame, TARGET
-from myforecaster.metrics.scorers import (
+from cbal.dataset.ts_dataframe import TimeSeriesDataFrame, TARGET
+from cbal.metrics.scorers import (
     WAPE, Coverage, SQL, MAE, RMSE, get_metric, METRIC_REGISTRY,
 )
 
@@ -113,7 +113,7 @@ class TestEvalMetricSeasonalPeriod:
         assert m.seasonal_period == 1
 
     def test_predictor_param(self):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         p = TimeSeriesPredictor(
             prediction_length=7, eval_metric="MASE",
             eval_metric_seasonal_period=7,
@@ -145,7 +145,7 @@ class TestHorizonWeight:
         assert RMSE()(y_true, y_pred, horizon_weight=w) == pytest.approx(1.0)
 
     def test_predictor_accepts_horizon_weight(self):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         p = TimeSeriesPredictor(
             prediction_length=3,
             horizon_weight=[1.0, 0.5, 0.25],
@@ -160,7 +160,7 @@ class TestHorizonWeight:
 
 class TestLogToFile:
     def test_creates_log_file(self):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "pred")
             p = TimeSeriesPredictor(
@@ -177,7 +177,7 @@ class TestLogToFile:
 
 class TestEnsembleHyperparameters:
     def test_fit_with_ensemble_hp(self):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         data = _make_data()
         p = TimeSeriesPredictor(prediction_length=7, eval_metric="MAE")
         p.fit(
@@ -196,7 +196,7 @@ class TestEnsembleHyperparameters:
 class TestSkipModelSelection:
     def test_skip_is_faster(self):
         import time
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         data = _make_data()
 
         p1 = TimeSeriesPredictor(prediction_length=7, eval_metric="MAE")
@@ -221,7 +221,7 @@ class TestSkipModelSelection:
 
 class TestCovariateScaler:
     def test_global_scaler(self):
-        from myforecaster.models.wrappers import CovariateScaler
+        from cbal.models.wrappers import CovariateScaler
         data = _make_data()
         cs = CovariateScaler(method="global")
         scaled, _ = cs.fit_transform(data)
@@ -230,7 +230,7 @@ class TestCovariateScaler:
         assert scaled["promo"].std() != data["promo"].std()
 
     def test_predictor_integration(self):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         data = _make_data()
         p = TimeSeriesPredictor(prediction_length=7, eval_metric="MAE")
         p.fit(
@@ -250,7 +250,7 @@ class TestCovariateScaler:
 
 class TestAutoDataFrameConversion:
     def test_fit_with_raw_dataframe(self):
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
         np.random.seed(42)
         raw_df = pd.DataFrame({
             "item_id": ["A"] * 50 + ["B"] * 50,
@@ -268,8 +268,8 @@ class TestAutoDataFrameConversion:
 
 class TestParallelHPO:
     def test_tune_model_with_n_jobs(self):
-        from myforecaster.hpo.runner import tune_model
-        from myforecaster.hpo.space import Int
+        from cbal.hpo.runner import tune_model
+        from cbal.hpo.space import Int
         data = _make_data(n_items=2, n_points=50)
         train, test = data.train_test_split(7)
         best_config, best_score, history = tune_model(
@@ -284,8 +284,8 @@ class TestParallelHPO:
         assert best_score < float("inf")
 
     def test_n_jobs_1_works(self):
-        from myforecaster.hpo.runner import tune_model
-        from myforecaster.hpo.space import Int
+        from cbal.hpo.runner import tune_model
+        from cbal.hpo.space import Int
         data = _make_data(n_items=2, n_points=50)
         train, test = data.train_test_split(7)
         _, score, hist = tune_model(

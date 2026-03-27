@@ -1,7 +1,7 @@
 """
 Integration tests — Full end-to-end pipeline verification.
 
-Exercises the complete MyForecaster workflow:
+Exercises the complete C-BAL workflow:
   Data → Fit (presets/HPO) → Leaderboard → Predict → Score → Save → Load → Predict
 
 Run:
@@ -15,9 +15,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame
-from myforecaster.predictor import TimeSeriesPredictor
-from myforecaster.hpo.space import Categorical
+from cbal.dataset.ts_dataframe import TimeSeriesDataFrame
+from cbal.predictor import TimeSeriesPredictor
+from cbal.hpo.space import Categorical
 
 
 # ---------------------------------------------------------------------------

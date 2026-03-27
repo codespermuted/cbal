@@ -13,11 +13,11 @@ import pytest
 # Skip entire module if torch unavailable
 torch = pytest.importorskip("torch")
 
-from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame
-from myforecaster.models.deep_learning.simple_feedforward import (
+from cbal.dataset.ts_dataframe import TimeSeriesDataFrame
+from cbal.models.deep_learning.simple_feedforward import (
     SimpleFeedForwardModel, SimpleFeedForwardNetwork,
 )
-from myforecaster.models.deep_learning.tide import (
+from cbal.models.deep_learning.tide import (
     TiDEModel, TiDENetwork,
 )
 
@@ -111,7 +111,7 @@ class TestSFFModel:
         assert np.isfinite(score)
 
     def test_registry(self):
-        from myforecaster.predictor import _create_model
+        from cbal.predictor import _create_model
         m = _create_model("SimpleFeedForward", "D", 7, {"max_epochs": 1}, "MAE")
         assert m is not None
         assert "SimpleFeedForward" in type(m).__name__
@@ -193,12 +193,12 @@ class TestTiDEModel:
         assert np.isfinite(score)
 
     def test_registry(self):
-        from myforecaster.predictor import _create_model
+        from cbal.predictor import _create_model
         m = _create_model("TiDE", "D", 7, {"max_epochs": 1}, "MAE")
         assert m is not None
         assert "TiDE" in type(m).__name__
 
     def test_suffix_stripping(self):
-        from myforecaster.predictor import _create_model
+        from cbal.predictor import _create_model
         m = _create_model("TiDEModel", "D", 7, {"max_epochs": 1}, "MAE")
         assert m is not None

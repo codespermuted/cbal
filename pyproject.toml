@@ -3,16 +3,16 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "myforecaster"
+name = "cbal"
 version = "0.1.0"
-description = "AutoML Time Series Forecasting Library — inspired by AutoGluon, fully independent."
+description = "C-BAL: Compute BAseLine — AutoML Time Series Forecasting. The starting point of your modeling journey."
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
 authors = [
-    {name = "MyForecaster Team"},
+    {name = "Jaehong Yu", email = "jaehongyu0105@gmail.com"},
 ]
-keywords = ["time-series", "forecasting", "automl", "machine-learning"]
+keywords = ["time-series", "forecasting", "automl", "machine-learning", "baseline"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -48,7 +48,7 @@ deep = [
     # "torch>=2.0",  # uncomment if installing from PyPI
 ]
 ssm = [
-    # Mamba SSM models (MambaTS, S-Mamba, Mamba4Cast) — CUDA only
+    # Mamba SSM models (MambaTS, S-Mamba) — CUDA only
     "mamba-ssm>=2.0",
     "causal-conv1d>=1.2",
 ]
@@ -59,14 +59,13 @@ foundation = [
     # Moirai:     pip install uni2ts
     # TTM:        pip install tsfm_public
     # Toto:       pip install toto-benchmark
-    # Each has its own heavy dependencies; install only what you need.
 ]
 serving = [
     "fastapi>=0.100",
     "uvicorn>=0.23",
 ]
 all = [
-    "myforecaster[stats,tabular,deep,ssm,foundation,serving]",
+    "cbal[stats,tabular,deep,ssm,foundation,serving]",
 ]
 dev = [
     "pytest>=7.0",
@@ -74,11 +73,16 @@ dev = [
     "ruff>=0.1",
 ]
 
+[project.urls]
+Homepage = "https://github.com/codespermuted/cbal"
+Repository = "https://github.com/codespermuted/cbal"
+Issues = "https://github.com/codespermuted/cbal/issues"
+
 [project.scripts]
-myforecaster = "myforecaster.cli:main"
+cbal = "cbal.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["myforecaster*"]
+include = ["cbal*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

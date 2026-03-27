@@ -1,7 +1,7 @@
 """Step 5-d Phase 1: Deep Learning models (DLinear + DeepAR) verification tests.
 
 These tests require PyTorch. Run on your server with:
-    cd myforecaster-project
+    cd cbal-project
     pip install -e ".[deep,dev]"
     pytest tests/test_step5d_dl_phase1.py -v
 """
@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
+from cbal.dataset import TimeSeriesDataFrame
 
 # Skip if torch is not available.
 # In environments where torch import hangs (broken CUDA), set:
@@ -58,14 +58,14 @@ def train_test(daily_tsdf, pred_length):
 # ---------------------------------------------------------------------------
 class TestTimeSeriesDataset:
     def test_train_dataset_creation(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.dataset import TimeSeriesDataset
+        from cbal.models.deep_learning.dataset import TimeSeriesDataset
         train, _ = train_test
         ds = TimeSeriesDataset(train, context_length=30, prediction_length=pred_length,
                                freq="D", mode="train")
         assert len(ds) > 0
 
     def test_train_sample_shapes(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.dataset import TimeSeriesDataset
+        from cbal.models.deep_learning.dataset import TimeSeriesDataset
         train, _ = train_test
         ds = TimeSeriesDataset(train, context_length=30, prediction_length=pred_length,
                                freq="D", mode="train")
@@ -76,7 +76,7 @@ class TestTimeSeriesDataset:
         assert sample["future_time_features"].shape[0] == pred_length
 
     def test_predict_dataset_creation(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.dataset import TimeSeriesDataset
+        from cbal.models.deep_learning.dataset import TimeSeriesDataset
         train, _ = train_test
         ds = TimeSeriesDataset(train, context_length=30, prediction_length=pred_length,
                                freq="D", mode="predict")
@@ -84,7 +84,7 @@ class TestTimeSeriesDataset:
         assert len(ds) == 3
 
     def test_dataloader_works(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.dataset import TimeSeriesDataset
+        from cbal.models.deep_learning.dataset import TimeSeriesDataset
         from torch.utils.data import DataLoader
         train, _ = train_test
         ds = TimeSeriesDataset(train, context_length=30, prediction_length=pred_length,
@@ -100,7 +100,7 @@ class TestTimeSeriesDataset:
 # ---------------------------------------------------------------------------
 class TestDistributions:
     def test_gaussian_output(self):
-        from myforecaster.models.deep_learning.layers.distributions import GaussianOutput
+        from cbal.models.deep_learning.layers.distributions import GaussianOutput
         head = GaussianOutput(input_dim=32)
         x = torch.randn(4, 10, 32)
         params = head(x)
@@ -110,7 +110,7 @@ class TestDistributions:
         assert (params[1] > 0).all()  # sigma positive
 
     def test_gaussian_loss(self):
-        from myforecaster.models.deep_learning.layers.distributions import GaussianOutput
+        from cbal.models.deep_learning.layers.distributions import GaussianOutput
         head = GaussianOutput(input_dim=16)
         x = torch.randn(4, 5, 16)
         params = head(x)
@@ -120,7 +120,7 @@ class TestDistributions:
         assert torch.isfinite(loss)
 
     def test_gaussian_sample(self):
-        from myforecaster.models.deep_learning.layers.distributions import GaussianOutput
+        from cbal.models.deep_learning.layers.distributions import GaussianOutput
         head = GaussianOutput(input_dim=16)
         x = torch.randn(4, 5, 16)
         params = head(x)
@@ -128,7 +128,7 @@ class TestDistributions:
         assert samples.shape == (50, 4, 5)
 
     def test_gaussian_quantile(self):
-        from myforecaster.models.deep_learning.layers.distributions import GaussianOutput
+        from cbal.models.deep_learning.layers.distributions import GaussianOutput
         head = GaussianOutput(input_dim=16)
         x = torch.randn(4, 5, 16)
         params = head(x)
@@ -139,14 +139,14 @@ class TestDistributions:
         assert (q[:, :, 1] <= q[:, :, 2] + 1e-5).all()
 
     def test_student_t_output(self):
-        from myforecaster.models.deep_learning.layers.distributions import StudentTOutput
+        from cbal.models.deep_learning.layers.distributions import StudentTOutput
         head = StudentTOutput(input_dim=32)
         x = torch.randn(4, 10, 32)
         params = head(x)
         assert len(params) == 3  # mu, sigma, nu
 
     def test_get_distribution_output(self):
-        from myforecaster.models.deep_learning.layers.distributions import get_distribution_output
+        from cbal.models.deep_learning.layers.distributions import get_distribution_output
         for name in ["gaussian", "student_t", "negative_binomial"]:
             head = get_distribution_output(name, 16)
             assert head is not None
@@ -157,24 +157,24 @@ class TestDistributions:
 # ---------------------------------------------------------------------------
 class TestEmbeddings:
     def test_cyclic_date_embedding(self):
-        from myforecaster.models.deep_learning.layers.embeddings import CyclicDateEmbedding
+        from cbal.models.deep_learning.layers.embeddings import CyclicDateEmbedding
         emb = CyclicDateEmbedding(freq="D")
         assert emb.output_dim == 2 * 4  # 4 fields for daily: dow, dom, month, woy
 
     def test_cyclic_with_projection(self):
-        from myforecaster.models.deep_learning.layers.embeddings import CyclicDateEmbedding
+        from cbal.models.deep_learning.layers.embeddings import CyclicDateEmbedding
         emb = CyclicDateEmbedding(freq="h", embed_dim=16)
         assert emb.output_dim == 16
 
     def test_positional_encoding(self):
-        from myforecaster.models.deep_learning.layers.embeddings import PositionalEncoding
+        from cbal.models.deep_learning.layers.embeddings import PositionalEncoding
         pe = PositionalEncoding(d_model=32, max_len=100)
         x = torch.randn(4, 50, 32)
         out = pe(x)
         assert out.shape == (4, 50, 32)
 
     def test_value_embedding(self):
-        from myforecaster.models.deep_learning.layers.embeddings import ValueEmbedding
+        from cbal.models.deep_learning.layers.embeddings import ValueEmbedding
         ve = ValueEmbedding(input_dim=1, d_model=32)
         x = torch.randn(4, 50, 1)
         out = ve(x)
@@ -186,14 +186,14 @@ class TestEmbeddings:
 # ---------------------------------------------------------------------------
 class TestDLinear:
     def test_network_forward(self):
-        from myforecaster.models.deep_learning.dlinear import DLinearNetwork
+        from cbal.models.deep_learning.dlinear import DLinearNetwork
         net = DLinearNetwork(context_length=30, prediction_length=7, n_channels=1)
         x = torch.randn(4, 30, 1)
         out = net(x)
         assert out.shape == (4, 7, 1)
 
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning import DLinearModel
+        from cbal.models.deep_learning import DLinearModel
         train, _ = train_test
         m = DLinearModel(
             freq="D", prediction_length=pred_length,
@@ -205,11 +205,11 @@ class TestDLinear:
         assert "mean" in pred.columns
 
     def test_registered(self):
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models import MODEL_REGISTRY
         assert "DLinear" in MODEL_REGISTRY
 
     def test_future_timestamps(self, train_test, pred_length):
-        from myforecaster.models.deep_learning import DLinearModel
+        from cbal.models.deep_learning import DLinearModel
         train, _ = train_test
         m = DLinearModel(
             freq="D", prediction_length=pred_length,
@@ -223,7 +223,7 @@ class TestDLinear:
             assert pred_ts.min() > last_ts
 
     def test_score(self, train_test, pred_length):
-        from myforecaster.models.deep_learning import DLinearModel
+        from cbal.models.deep_learning import DLinearModel
         train, test = train_test
         m = DLinearModel(
             freq="D", prediction_length=pred_length,
@@ -239,7 +239,7 @@ class TestDLinear:
 # ---------------------------------------------------------------------------
 class TestDeepAR:
     def test_network_forward_train(self):
-        from myforecaster.models.deep_learning.deepar import DeepARNetwork
+        from cbal.models.deep_learning.deepar import DeepARNetwork
         net = DeepARNetwork(hidden_size=32, num_layers=1, n_time_features=5,
                             lags=[1, 2, 7], n_items=3, embedding_dim=8)
         B, C, H = 4, 30, 7
@@ -258,7 +258,7 @@ class TestDeepAR:
 
     def test_item_embedding_different_items(self):
         """Different item IDs should produce different outputs."""
-        from myforecaster.models.deep_learning.deepar import DeepARNetwork
+        from cbal.models.deep_learning.deepar import DeepARNetwork
         net = DeepARNetwork(hidden_size=16, num_layers=1, lags=[1],
                             n_items=5, embedding_dim=8)
         net.eval()
@@ -287,8 +287,8 @@ class TestDeepAR:
 
     def test_age_covariate_in_dataset(self):
         """Dataset should include age features."""
-        from myforecaster.models.deep_learning.dataset import TimeSeriesDataset
-        from myforecaster.dataset import TimeSeriesDataFrame
+        from cbal.models.deep_learning.dataset import TimeSeriesDataset
+        from cbal.dataset import TimeSeriesDataFrame
         import pandas as pd
         dates = pd.date_range("2023-01-01", periods=50, freq="D")
         rows = [{"item_id": "A", "timestamp": d, "target": float(i)}
@@ -307,7 +307,7 @@ class TestDeepAR:
 
     def test_auto_scaling(self):
         """Verify that inputs are scaled and outputs rescaled."""
-        from myforecaster.models.deep_learning.deepar import DeepARNetwork
+        from cbal.models.deep_learning.deepar import DeepARNetwork
         net = DeepARNetwork(hidden_size=16, num_layers=1, lags=[1, 2])
         net.eval()
         # Create data with very different scales
@@ -324,7 +324,7 @@ class TestDeepAR:
 
     def test_trajectory_sampling_produces_different_paths(self):
         """Key fix: each sample trajectory should be DIFFERENT."""
-        from myforecaster.models.deep_learning.deepar import DeepARNetwork
+        from cbal.models.deep_learning.deepar import DeepARNetwork
         net = DeepARNetwork(hidden_size=32, num_layers=1, lags=[1, 2])
         net.eval()
         B, C, H = 2, 20, 7
@@ -342,7 +342,7 @@ class TestDeepAR:
 
     def test_lagged_features(self):
         """Verify lag extraction works."""
-        from myforecaster.models.deep_learning.deepar import _extract_lags
+        from cbal.models.deep_learning.deepar import _extract_lags
         series = torch.arange(10, dtype=torch.float).unsqueeze(0)  # (1, 10)
         lags = _extract_lags(series, [1, 3])  # (1, 10, 2)
         assert lags.shape == (1, 10, 2)
@@ -354,14 +354,14 @@ class TestDeepAR:
         assert lags[0, 5, 0].item() == 4.0
 
     def test_freq_lag_detection(self):
-        from myforecaster.models.deep_learning.deepar import _get_lags_for_freq
+        from cbal.models.deep_learning.deepar import _get_lags_for_freq
         daily_lags = _get_lags_for_freq("D")
         assert 7 in daily_lags  # weekly lag for daily data
         hourly_lags = _get_lags_for_freq("h")
         assert 24 in hourly_lags  # daily lag for hourly data
 
     def test_network_predict_quantiles(self):
-        from myforecaster.models.deep_learning.deepar import DeepARNetwork
+        from cbal.models.deep_learning.deepar import DeepARNetwork
         net = DeepARNetwork(hidden_size=32, num_layers=1, n_time_features=5,
                             lags=[1, 2, 7])
         net.eval()
@@ -378,7 +378,7 @@ class TestDeepAR:
         assert 0.1 in result["quantiles"]
 
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning import DeepARModel
+        from cbal.models.deep_learning import DeepARModel
         train, _ = train_test
         m = DeepARModel(
             freq="D", prediction_length=pred_length,
@@ -397,7 +397,7 @@ class TestDeepAR:
 
     def test_quantile_spread(self, train_test, pred_length):
         """After the fix, q10 and q90 should NOT be identical."""
-        from myforecaster.models.deep_learning import DeepARModel
+        from cbal.models.deep_learning import DeepARModel
         train, _ = train_test
         m = DeepARModel(
             freq="D", prediction_length=pred_length,
@@ -413,11 +413,11 @@ class TestDeepAR:
         assert spread > 0.1, f"Quantile spread too small: {spread}"
 
     def test_registered(self):
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models import MODEL_REGISTRY
         assert "DeepAR" in MODEL_REGISTRY
 
     def test_student_t_distribution(self, train_test, pred_length):
-        from myforecaster.models.deep_learning import DeepARModel
+        from cbal.models.deep_learning import DeepARModel
         train, _ = train_test
         m = DeepARModel(
             freq="D", prediction_length=pred_length,
@@ -432,7 +432,7 @@ class TestDeepAR:
         assert len(pred) == 3 * pred_length
 
     def test_score(self, train_test, pred_length):
-        from myforecaster.models.deep_learning import DeepARModel
+        from cbal.models.deep_learning import DeepARModel
         train, test = train_test
         m = DeepARModel(
             freq="D", prediction_length=pred_length,
@@ -452,7 +452,7 @@ class TestDeepAR:
 class TestRegistry:
     def test_dl_models_in_registry(self):
         # Trigger registration by importing
-        from myforecaster.models.deep_learning import DLinearModel, DeepARModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning import DLinearModel, DeepARModel
+        from cbal.models import MODEL_REGISTRY
         assert "DLinear" in MODEL_REGISTRY
         assert "DeepAR" in MODEL_REGISTRY

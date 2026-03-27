@@ -1,7 +1,7 @@
 """Step 5-d Phase 2: iTransformer verification tests.
 
 Run on your server:
-    cd myforecaster-project
+    cd cbal-project
     pytest tests/test_step5d_itransformer.py -v
 """
 
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
+from cbal.dataset import TimeSeriesDataFrame
 
 import os, importlib.util
 if os.environ.get("MYFORECASTER_SKIP_TORCH", ""):
@@ -51,21 +51,21 @@ def train_test(daily_tsdf, pred_length):
 # ---------------------------------------------------------------------------
 class TestInvertedTransformerBlock:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.itransformer import InvertedTransformerBlock
+        from cbal.models.deep_learning.itransformer import InvertedTransformerBlock
         block = InvertedTransformerBlock(d_model=64, n_heads=4, d_ff=128)
         x = torch.randn(4, 3, 64)  # B=4, N=3 variates, D=64
         out = block(x)
         assert out.shape == (4, 3, 64)
 
     def test_single_variate(self):
-        from myforecaster.models.deep_learning.itransformer import InvertedTransformerBlock
+        from cbal.models.deep_learning.itransformer import InvertedTransformerBlock
         block = InvertedTransformerBlock(d_model=64, n_heads=4, d_ff=128)
         x = torch.randn(4, 1, 64)  # single variate
         out = block(x)
         assert out.shape == (4, 1, 64)
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.itransformer import InvertedTransformerBlock
+        from cbal.models.deep_learning.itransformer import InvertedTransformerBlock
         block = InvertedTransformerBlock(d_model=64, n_heads=4, d_ff=128)
         x = torch.randn(4, 3, 64)
         out = block(x)
@@ -80,7 +80,7 @@ class TestInvertedTransformerBlock:
 # ---------------------------------------------------------------------------
 class TestiTransformerNetwork:
     def test_univariate_output_shape(self):
-        from myforecaster.models.deep_learning.itransformer import iTransformerNetwork
+        from cbal.models.deep_learning.itransformer import iTransformerNetwork
         net = iTransformerNetwork(
             context_length=96, prediction_length=24,
             n_variates=1, d_model=64, n_heads=4, n_layers=1, d_ff=128,
@@ -90,7 +90,7 @@ class TestiTransformerNetwork:
         assert out.shape == (4, 24)
 
     def test_multivariate_output_shape(self):
-        from myforecaster.models.deep_learning.itransformer import iTransformerNetwork
+        from cbal.models.deep_learning.itransformer import iTransformerNetwork
         net = iTransformerNetwork(
             context_length=96, prediction_length=24,
             n_variates=5, d_model=64, n_heads=4, n_layers=1, d_ff=128,
@@ -100,7 +100,7 @@ class TestiTransformerNetwork:
         assert out.shape == (4, 24, 5)
 
     def test_without_revin(self):
-        from myforecaster.models.deep_learning.itransformer import iTransformerNetwork
+        from cbal.models.deep_learning.itransformer import iTransformerNetwork
         net = iTransformerNetwork(
             context_length=96, prediction_length=24,
             n_variates=1, d_model=64, n_heads=4, n_layers=1, revin=False,
@@ -110,7 +110,7 @@ class TestiTransformerNetwork:
         assert out.shape == (4, 24)
 
     def test_deeper_network(self):
-        from myforecaster.models.deep_learning.itransformer import iTransformerNetwork
+        from cbal.models.deep_learning.itransformer import iTransformerNetwork
         net = iTransformerNetwork(
             context_length=96, prediction_length=24,
             n_variates=3, d_model=64, n_heads=4, n_layers=4, d_ff=128,
@@ -120,7 +120,7 @@ class TestiTransformerNetwork:
         assert out.shape == (4, 24, 3)
 
     def test_gradient_flows_full_network(self):
-        from myforecaster.models.deep_learning.itransformer import iTransformerNetwork
+        from cbal.models.deep_learning.itransformer import iTransformerNetwork
         net = iTransformerNetwork(
             context_length=96, prediction_length=24,
             n_variates=1, d_model=64, n_heads=4, n_layers=2,
@@ -139,7 +139,7 @@ class TestiTransformerNetwork:
 # ---------------------------------------------------------------------------
 class TestiTransformerModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.itransformer import iTransformerModel
+        from cbal.models.deep_learning.itransformer import iTransformerModel
         train, _ = train_test
         m = iTransformerModel(
             freq="D", prediction_length=pred_length,
@@ -155,7 +155,7 @@ class TestiTransformerModel:
         assert "mean" in pred.columns
 
     def test_prediction_values_are_finite(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.itransformer import iTransformerModel
+        from cbal.models.deep_learning.itransformer import iTransformerModel
         train, _ = train_test
         m = iTransformerModel(
             freq="D", prediction_length=pred_length,
@@ -169,7 +169,7 @@ class TestiTransformerModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_future_timestamps_correct(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.itransformer import iTransformerModel
+        from cbal.models.deep_learning.itransformer import iTransformerModel
         train, _ = train_test
         m = iTransformerModel(
             freq="D", prediction_length=pred_length,
@@ -186,7 +186,7 @@ class TestiTransformerModel:
             assert pred_ts.min() > last_ts
 
     def test_score_is_finite(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.itransformer import iTransformerModel
+        from cbal.models.deep_learning.itransformer import iTransformerModel
         train, test = train_test
         m = iTransformerModel(
             freq="D", prediction_length=pred_length,
@@ -200,6 +200,6 @@ class TestiTransformerModel:
         assert np.isfinite(score)
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.itransformer import iTransformerModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.itransformer import iTransformerModel
+        from cbal.models import MODEL_REGISTRY
         assert "iTransformer" in MODEL_REGISTRY

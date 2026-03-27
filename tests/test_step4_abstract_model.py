@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
-from myforecaster.metrics import MAE, RMSE, get_metric
-from myforecaster.models.abstract_model import AbstractTimeSeriesModel
+from cbal.dataset import TimeSeriesDataFrame
+from cbal.metrics import MAE, RMSE, get_metric
+from cbal.models.abstract_model import AbstractTimeSeriesModel
 
 
 # ---------------------------------------------------------------------------

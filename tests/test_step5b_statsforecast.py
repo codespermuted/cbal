@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
-from myforecaster.models import MODEL_REGISTRY, list_models
-from myforecaster.models.statsforecast import StatsForecastModel, list_statsforecast_models
+from cbal.dataset import TimeSeriesDataFrame
+from cbal.models import MODEL_REGISTRY, list_models
+from cbal.models.statsforecast import StatsForecastModel, list_statsforecast_models
 
 
 # ---------------------------------------------------------------------------

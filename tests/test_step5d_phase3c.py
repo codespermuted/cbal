@@ -1,7 +1,7 @@
 """Step 5-d Phase 3c: MTGNN and CrossGNN verification tests.
 
 Run on your server:
-    cd myforecaster-project
+    cd cbal-project
     pytest tests/test_step5d_phase3c.py -v
 """
 
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
+from cbal.dataset import TimeSeriesDataFrame
 
 import os, importlib.util
 if os.environ.get("MYFORECASTER_SKIP_TORCH", ""):
@@ -51,7 +51,7 @@ def train_test(daily_tsdf, pred_length):
 # ===========================================================================
 class TestGraphLearning:
     def test_adjacency_shape(self):
-        from myforecaster.models.deep_learning.mtgnn import GraphLearning
+        from cbal.models.deep_learning.mtgnn import GraphLearning
         gl = GraphLearning(n_nodes=5, embed_dim=10)
         adj = gl()
         assert adj.shape == (5, 5)
@@ -60,7 +60,7 @@ class TestGraphLearning:
 
     def test_adjacency_is_directed(self):
         """MTGNN learns uni-directed (asymmetric) adjacency."""
-        from myforecaster.models.deep_learning.mtgnn import GraphLearning
+        from cbal.models.deep_learning.mtgnn import GraphLearning
         gl = GraphLearning(n_nodes=4, embed_dim=8)
         adj = gl()
         # Should NOT be symmetric in general
@@ -70,7 +70,7 @@ class TestGraphLearning:
 
 class TestMixhopGraphConv:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.mtgnn import MixhopGraphConv, GraphLearning
+        from cbal.models.deep_learning.mtgnn import MixhopGraphConv, GraphLearning
         gc = MixhopGraphConv(d_in=16, d_out=16, n_hops=2)
         gl = GraphLearning(n_nodes=5)
         adj = gl()
@@ -81,7 +81,7 @@ class TestMixhopGraphConv:
 
 class TestMTGNNNetwork:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.mtgnn import MTGNNNetwork
+        from cbal.models.deep_learning.mtgnn import MTGNNNetwork
         net = MTGNNNetwork(n_nodes=3, context_length=64, prediction_length=12,
                             d_model=16, n_layers=2, embed_dim=8)
         x = torch.randn(2, 64, 3)  # 3 variates
@@ -89,7 +89,7 @@ class TestMTGNNNetwork:
         assert out.shape == (2, 12, 3)
 
     def test_univariate(self):
-        from myforecaster.models.deep_learning.mtgnn import MTGNNNetwork
+        from cbal.models.deep_learning.mtgnn import MTGNNNetwork
         net = MTGNNNetwork(n_nodes=1, context_length=64, prediction_length=12,
                             d_model=16, n_layers=1)
         x = torch.randn(2, 64, 1)
@@ -97,7 +97,7 @@ class TestMTGNNNetwork:
         assert out.shape == (2, 12, 1)
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.mtgnn import MTGNNNetwork
+        from cbal.models.deep_learning.mtgnn import MTGNNNetwork
         net = MTGNNNetwork(n_nodes=2, context_length=32, prediction_length=8,
                             d_model=8, n_layers=1, embed_dim=4)
         x = torch.randn(2, 32, 2)
@@ -109,7 +109,7 @@ class TestMTGNNNetwork:
 
 class TestMTGNNModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.mtgnn import MTGNNModel
+        from cbal.models.deep_learning.mtgnn import MTGNNModel
         train, _ = train_test
         m = MTGNNModel(
             freq="D", prediction_length=pred_length,
@@ -124,7 +124,7 @@ class TestMTGNNModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_score(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.mtgnn import MTGNNModel
+        from cbal.models.deep_learning.mtgnn import MTGNNModel
         train, test = train_test
         m = MTGNNModel(
             freq="D", prediction_length=pred_length,
@@ -137,8 +137,8 @@ class TestMTGNNModel:
         assert np.isfinite(m.score(test, metric="MAE"))
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.mtgnn import MTGNNModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.mtgnn import MTGNNModel
+        from cbal.models import MODEL_REGISTRY
         assert "MTGNN" in MODEL_REGISTRY
 
 
@@ -147,7 +147,7 @@ class TestMTGNNModel:
 # ===========================================================================
 class TestAMSI:
     def test_multiscale_output(self):
-        from myforecaster.models.deep_learning.crossgnn import AMSI
+        from cbal.models.deep_learning.crossgnn import AMSI
         amsi = AMSI(context_length=96, n_scales=4)
         x = torch.randn(2, 96, 16)
         scales = amsi(x)
@@ -157,7 +157,7 @@ class TestAMSI:
         assert scales[3].shape == (2, 12, 16)
 
     def test_learnable_weights(self):
-        from myforecaster.models.deep_learning.crossgnn import AMSI
+        from cbal.models.deep_learning.crossgnn import AMSI
         amsi = AMSI(context_length=64, n_scales=3)
         w = amsi.get_weights()
         assert w.shape == (3,)
@@ -166,7 +166,7 @@ class TestAMSI:
 
 class TestCrossScaleGNN:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.crossgnn import CrossScaleGNN
+        from cbal.models.deep_learning.crossgnn import CrossScaleGNN
         gnn = CrossScaleGNN(d_model=16, n_scales=4)
         feats = [torch.randn(2, 16) for _ in range(4)]
         out = gnn(feats)
@@ -176,7 +176,7 @@ class TestCrossScaleGNN:
 
 class TestCrossVariableGNN:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.crossgnn import CrossVariableGNN
+        from cbal.models.deep_learning.crossgnn import CrossVariableGNN
         gnn = CrossVariableGNN(d_model=16, n_vars=5)
         x = torch.randn(2, 5, 16)  # 5 variables
         out = gnn(x)
@@ -185,7 +185,7 @@ class TestCrossVariableGNN:
 
 class TestCrossGNNNetwork:
     def test_univariate_output(self):
-        from myforecaster.models.deep_learning.crossgnn import CrossGNNNetwork
+        from cbal.models.deep_learning.crossgnn import CrossGNNNetwork
         net = CrossGNNNetwork(context_length=64, prediction_length=12,
                                n_vars=1, d_model=16, n_scales=3, n_layers=1)
         x = torch.randn(2, 64)
@@ -193,7 +193,7 @@ class TestCrossGNNNetwork:
         assert out.shape == (2, 12)
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.crossgnn import CrossGNNNetwork
+        from cbal.models.deep_learning.crossgnn import CrossGNNNetwork
         net = CrossGNNNetwork(context_length=32, prediction_length=8,
                                d_model=8, n_scales=2, n_layers=1)
         x = torch.randn(2, 32)
@@ -205,7 +205,7 @@ class TestCrossGNNNetwork:
 
 class TestCrossGNNModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.crossgnn import CrossGNNModel
+        from cbal.models.deep_learning.crossgnn import CrossGNNModel
         train, _ = train_test
         m = CrossGNNModel(
             freq="D", prediction_length=pred_length,
@@ -221,7 +221,7 @@ class TestCrossGNNModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_score(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.crossgnn import CrossGNNModel
+        from cbal.models.deep_learning.crossgnn import CrossGNNModel
         train, test = train_test
         m = CrossGNNModel(
             freq="D", prediction_length=pred_length,
@@ -234,6 +234,6 @@ class TestCrossGNNModel:
         assert np.isfinite(m.score(test, metric="MAE"))
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.crossgnn import CrossGNNModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.crossgnn import CrossGNNModel
+        from cbal.models import MODEL_REGISTRY
         assert "CrossGNN" in MODEL_REGISTRY

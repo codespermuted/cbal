@@ -11,10 +11,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame
-from myforecaster.hpo.space import Int, Real, Categorical, sample_config, get_defaults
-from myforecaster.hpo.searcher import RandomSearcher, get_searcher
-from myforecaster.hpo.runner import tune_model, get_default_search_space
+from cbal.dataset.ts_dataframe import TimeSeriesDataFrame
+from cbal.hpo.space import Int, Real, Categorical, sample_config, get_defaults
+from cbal.hpo.searcher import RandomSearcher, get_searcher
+from cbal.hpo.runner import tune_model, get_default_search_space
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +233,7 @@ class TestDefaultSpaces:
 
     def test_spaces_are_searchspace_instances(self):
         space = get_default_search_space("PatchTST")
-        from myforecaster.hpo.space import SearchSpace
+        from cbal.hpo.space import SearchSpace
         for v in space.values():
             assert isinstance(v, SearchSpace)
 
@@ -306,7 +306,7 @@ class TestTuneModel:
 class TestPredictorHPO:
     def test_fit_with_hpo(self, sample_data):
         """Predictor + HPO with SearchSpace in hyperparameters."""
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
 
         p = TimeSeriesPredictor(prediction_length=7, eval_metric="MAE")
         p.fit(
@@ -328,7 +328,7 @@ class TestPredictorHPO:
 
     def test_fit_hpo_mixed(self, sample_data):
         """Mix of HPO models and fixed models."""
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
 
         p = TimeSeriesPredictor(prediction_length=7, eval_metric="MAE")
         p.fit(
@@ -351,7 +351,7 @@ class TestPredictorHPO:
 
     def test_hpo_kwargs_none_means_no_hpo(self, sample_data):
         """When hyperparameter_tune_kwargs=None, no HPO even with SearchSpace."""
-        from myforecaster.predictor import TimeSeriesPredictor
+        from cbal.predictor import TimeSeriesPredictor
 
         p = TimeSeriesPredictor(prediction_length=7, eval_metric="MAE")
         # SearchSpace passed but HPO disabled → treated as fixed (fails gracefully)

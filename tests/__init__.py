@@ -1,1 +1,1 @@
-"""Tests for MyForecaster."""
+"""Tests for C-BAL."""

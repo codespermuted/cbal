@@ -1,7 +1,7 @@
 """Step 5-d Phase 2: PatchTST verification tests.
 
 Run on your server:
-    cd myforecaster-project
+    cd cbal-project
     pytest tests/test_step5d_patchtst.py -v
 """
 
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset import TimeSeriesDataFrame
+from cbal.dataset import TimeSeriesDataFrame
 
 import os, importlib.util
 if os.environ.get("MYFORECASTER_SKIP_TORCH", ""):
@@ -51,7 +51,7 @@ def train_test(daily_tsdf, pred_length):
 # ---------------------------------------------------------------------------
 class TestRevIN:
     def test_normalize_denormalize_roundtrip(self):
-        from myforecaster.models.deep_learning.patchtst import RevIN
+        from cbal.models.deep_learning.patchtst import RevIN
         revin = RevIN(num_features=1, affine=False)
         x = torch.randn(4, 50, 1) * 10 + 100  # mean~100, std~10
         normed = revin(x)
@@ -60,7 +60,7 @@ class TestRevIN:
         assert (normed.std(dim=1) - 1.0).abs().max() < 0.1
 
     def test_inverse_restores_scale(self):
-        from myforecaster.models.deep_learning.patchtst import RevIN
+        from cbal.models.deep_learning.patchtst import RevIN
         revin = RevIN(num_features=1, affine=False)
         x = torch.randn(4, 50, 1) * 10 + 100
         normed = revin(x)
@@ -75,7 +75,7 @@ class TestRevIN:
 # ---------------------------------------------------------------------------
 class TestPatchTSTNetwork:
     def test_output_shape(self):
-        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        from cbal.models.deep_learning.patchtst import PatchTSTNetwork
         net = PatchTSTNetwork(
             context_length=96, prediction_length=24,
             patch_len=16, stride=8, d_model=32, n_heads=4, n_layers=1, d_ff=64,
@@ -85,7 +85,7 @@ class TestPatchTSTNetwork:
         assert out.shape == (4, 24)
 
     def test_n_patches_calculation(self):
-        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        from cbal.models.deep_learning.patchtst import PatchTSTNetwork
         net = PatchTSTNetwork(
             context_length=96, prediction_length=24,
             patch_len=16, stride=8,
@@ -94,7 +94,7 @@ class TestPatchTSTNetwork:
         assert net.n_patches == 11
 
     def test_short_context_with_padding(self):
-        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        from cbal.models.deep_learning.patchtst import PatchTSTNetwork
         # context_length < patch_len → should pad
         net = PatchTSTNetwork(
             context_length=10, prediction_length=5,
@@ -105,7 +105,7 @@ class TestPatchTSTNetwork:
         assert out.shape == (4, 5)
 
     def test_without_revin(self):
-        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        from cbal.models.deep_learning.patchtst import PatchTSTNetwork
         net = PatchTSTNetwork(
             context_length=96, prediction_length=24,
             patch_len=16, stride=8, d_model=32, n_heads=4, n_layers=1,
@@ -116,7 +116,7 @@ class TestPatchTSTNetwork:
         assert out.shape == (4, 24)
 
     def test_gradient_flows(self):
-        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        from cbal.models.deep_learning.patchtst import PatchTSTNetwork
         net = PatchTSTNetwork(
             context_length=96, prediction_length=24,
             patch_len=16, stride=8, d_model=32, n_heads=4, n_layers=1,
@@ -132,7 +132,7 @@ class TestPatchTSTNetwork:
                 assert param.grad is not None, f"No gradient for {name}"
 
     def test_different_patch_configs(self):
-        from myforecaster.models.deep_learning.patchtst import PatchTSTNetwork
+        from cbal.models.deep_learning.patchtst import PatchTSTNetwork
         # Non-overlapping patches
         net = PatchTSTNetwork(
             context_length=96, prediction_length=24,
@@ -149,7 +149,7 @@ class TestPatchTSTNetwork:
 # ---------------------------------------------------------------------------
 class TestPatchTSTModel:
     def test_fit_predict(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.patchtst import PatchTSTModel
+        from cbal.models.deep_learning.patchtst import PatchTSTModel
         train, _ = train_test
         m = PatchTSTModel(
             freq="D", prediction_length=pred_length,
@@ -166,7 +166,7 @@ class TestPatchTSTModel:
         assert "mean" in pred.columns
 
     def test_prediction_values_are_finite(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.patchtst import PatchTSTModel
+        from cbal.models.deep_learning.patchtst import PatchTSTModel
         train, _ = train_test
         m = PatchTSTModel(
             freq="D", prediction_length=pred_length,
@@ -181,7 +181,7 @@ class TestPatchTSTModel:
         assert np.isfinite(pred["mean"].values).all()
 
     def test_future_timestamps_correct(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.patchtst import PatchTSTModel
+        from cbal.models.deep_learning.patchtst import PatchTSTModel
         train, _ = train_test
         m = PatchTSTModel(
             freq="D", prediction_length=pred_length,
@@ -199,7 +199,7 @@ class TestPatchTSTModel:
             assert pred_ts.min() > last_ts
 
     def test_score_is_finite(self, train_test, pred_length):
-        from myforecaster.models.deep_learning.patchtst import PatchTSTModel
+        from cbal.models.deep_learning.patchtst import PatchTSTModel
         train, test = train_test
         m = PatchTSTModel(
             freq="D", prediction_length=pred_length,
@@ -214,6 +214,6 @@ class TestPatchTSTModel:
         assert np.isfinite(score)
 
     def test_registered(self):
-        from myforecaster.models.deep_learning.patchtst import PatchTSTModel
-        from myforecaster.models import MODEL_REGISTRY
+        from cbal.models.deep_learning.patchtst import PatchTSTModel
+        from cbal.models import MODEL_REGISTRY
         assert "PatchTST" in MODEL_REGISTRY

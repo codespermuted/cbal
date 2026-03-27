@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Full Benchmark: MyForecaster vs AutoGluon — Multiple presets × datasets
+Full Benchmark: C-BAL vs AutoGluon — Multiple presets × datasets
 ======================================================================
 """
 import sys, time, warnings, traceback, numpy as np, pandas as pd
@@ -52,7 +52,7 @@ def split(df, pl):
 
 # ── Metrics ──
 def calc_metrics(preds, test_df, train_df, freq):
-    from myforecaster.metrics.scorers import MAE, RMSE, sMAPE
+    from cbal.metrics.scorers import MAE, RMSE, sMAPE
     mae_s, rmse_s, smape_s = MAE(), RMSE(), sMAPE()
     maes, rmses, smapes = [], [], []
     for iid in test_df["item_id"].unique():
@@ -71,8 +71,8 @@ def calc_metrics(preds, test_df, train_df, freq):
 
 # ── Runners ──
 def run_myf(train_df, test_df, pl, freq, preset):
-    from myforecaster import TimeSeriesPredictor
-    from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame
+    from cbal import TimeSeriesPredictor
+    from cbal.dataset.ts_dataframe import TimeSeriesDataFrame
     tsdf = TimeSeriesDataFrame.from_data_frame(train_df)
     p = TimeSeriesPredictor(prediction_length=pl, eval_metric="MAE", freq=freq,
                             path=f"/tmp/myf_{int(time.time())}")
@@ -108,7 +108,7 @@ def main():
     presets = sys.argv[1:] if len(sys.argv) > 1 else ["medium_quality"]
 
     print(f"\n{'='*80}")
-    print(f"  Full Benchmark: MyForecaster vs AutoGluon")
+    print(f"  Full Benchmark: C-BAL vs AutoGluon")
     print(f"  Presets: {presets}")
     print(f"{'='*80}")
 
@@ -129,7 +129,7 @@ def main():
         print(f"{'─'*80}")
 
         for preset in presets:
-            # MyForecaster
+            # C-BAL
             try:
                 myf = run_myf(train_df, test_df, pl, freq, preset)
                 myf_str = f"MAE={myf['MAE']:.3f} RMSE={myf['RMSE']:.3f} t={myf['time']:.0f}s"

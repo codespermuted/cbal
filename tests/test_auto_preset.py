@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from myforecaster.dataset.ts_dataframe import TimeSeriesDataFrame
-from myforecaster.predictor import (
+from cbal.dataset.ts_dataframe import TimeSeriesDataFrame
+from cbal.predictor import (
     TimeSeriesPredictor,
     _build_auto_preset,
     _profile_data,
@@ -251,6 +251,6 @@ class TestAutoPresetE2E:
 
     def test_auto_preset_in_resolve(self):
         """Verify _resolve_preset('auto') returns marker dict."""
-        from myforecaster.predictor import _resolve_preset
+        from cbal.predictor import _resolve_preset
         config = _resolve_preset("auto")
         assert config.get("_auto") is True
