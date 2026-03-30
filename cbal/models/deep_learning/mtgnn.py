@@ -23,7 +23,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from cbal.models import register_model
-from cbal.models.deep_learning.base import AbstractDLModel
+from cbal.models.deep_learning.base import AbstractDLModel, _get_loss_fn
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +290,6 @@ class MTGNNModel(AbstractDLModel):
         "d_model": 32, "n_layers": 3, "embed_dim": 10,
         "n_hops": 2, "dropout": 0.1,
         "max_epochs": 50, "learning_rate": 1e-3,
-        "loss_type": "mse",            # "mse" or "quantile"
         "quantile_levels": (0.1, 0.5, 0.9),
     }
 
@@ -323,7 +322,8 @@ class MTGNNModel(AbstractDLModel):
             q_preds = self._quantile_head(pred.unsqueeze(-1))  # (B, H, Q)
             return self._quantile_head.loss(q_preds, future)
 
-        return F.mse_loss(pred, future)
+        loss_fn = _get_loss_fn(self.get_hyperparameter("loss_type"))
+        return loss_fn(pred, future)
 
     def _predict_step(self, batch, quantile_levels=(0.1, 0.5, 0.9)):
         x = self._enrich_target(batch).unsqueeze(-1)

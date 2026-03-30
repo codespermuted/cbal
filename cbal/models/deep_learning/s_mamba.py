@@ -26,7 +26,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from cbal.models import register_model
-from cbal.models.deep_learning.base import AbstractDLModel
+from cbal.models.deep_learning.base import AbstractDLModel, _get_loss_fn
 from cbal.models.deep_learning.patchtst import RevIN
 from cbal.models.deep_learning.layers.mamba import BidirectionalMambaBlock
 
@@ -185,7 +185,8 @@ class SMambaModel(AbstractDLModel):
         past = self._enrich_target(batch)
         future = batch["future_target"]
         pred = self._network(past)
-        return F.mse_loss(pred, future)
+        loss_fn = _get_loss_fn(self.get_hyperparameter("loss_type"))
+        return loss_fn(pred, future)
 
     def _predict_step(self, batch, quantile_levels=(0.1, 0.5, 0.9)):
         pred = self._network(self._enrich_target(batch))

@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from cbal.models.deep_learning.base import AbstractDLModel
+from cbal.models.deep_learning.base import AbstractDLModel, _get_loss_fn
 
 
 class SimpleFeedForwardNetwork(nn.Module):
@@ -116,7 +116,6 @@ class SimpleFeedForwardModel(AbstractDLModel):
         "num_samples": 100,
         "max_epochs": 50,
         "learning_rate": 1e-3,
-        "loss_type": "mse",            # "mse", "nll", or "quantile"
         "quantile_levels": (0.1, 0.5, 0.9),
     }
 

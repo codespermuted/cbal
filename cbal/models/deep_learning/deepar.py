@@ -34,16 +34,24 @@ from cbal.models.deep_learning.layers.distributions import (
 # ---------------------------------------------------------------------------
 
 _FREQ_LAGS = {
-    # freq_tier -> list of lag indices (in time steps)
-    "second":     [1, 2, 3, 60, 120, 180],            # 1-3s, 1-3min ago
-    "minute":     [1, 2, 3, 60, 120, 1440],            # 1-3min, 1h, 2h, 1d
-    "hourly":     [1, 2, 3, 24, 48, 168],              # 1-3h, 1d, 2d, 1w
-    "daily_plus": [1, 2, 3, 7, 14, 21, 28],            # 1-3d, 1w, 2w, 3w, 4w
+    # freq_tier -> list of lag indices (matching GluonTS/AG lag sets)
+    "second":     [1, 2, 3, 4, 5, 6, 7, 60, 120, 180, 300, 3600],
+    "minute":     [1, 2, 3, 4, 5, 6, 7, 15, 30, 60, 120, 180, 360,
+                   720, 1440, 2880, 10080],
+    "hourly":     [1, 2, 3, 4, 5, 6, 7, 8, 12, 23, 24, 25, 47, 48, 49,
+                   71, 72, 73, 96, 168, 336, 720, 8760],
+    "daily_plus": [1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 15, 20, 21, 22,
+                   27, 28, 29, 30, 31, 56, 84, 363, 364, 365,
+                   727, 728, 729],
+    "weekly":     [1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 25, 26, 27,
+                   51, 52, 53],
+    "monthly":    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18, 24,
+                   30, 36, 48, 60],
 }
 
 
 def _get_lags_for_freq(freq: str | None) -> list[int]:
-    """Return appropriate lag indices based on frequency."""
+    """Return appropriate lag indices based on frequency (AG-style)."""
     if freq is None:
         return _FREQ_LAGS["daily_plus"]
     f = freq.upper().rstrip("0123456789")
@@ -53,6 +61,10 @@ def _get_lags_for_freq(freq: str | None) -> list[int]:
         return _FREQ_LAGS["minute"]
     if f in ("H", "BH"):
         return _FREQ_LAGS["hourly"]
+    if f in ("W", "W-SUN", "W-MON"):
+        return _FREQ_LAGS["weekly"]
+    if f in ("MS", "ME", "M"):
+        return _FREQ_LAGS["monthly"]
     return _FREQ_LAGS["daily_plus"]
 
 
@@ -405,13 +417,14 @@ class DeepARModel(AbstractDLModel):
         "hidden_size": 40,           # AG default: 40
         "num_layers": 2,
         "dropout": 0.1,
-        "distribution": "gaussian",
+        "distribution": "student_t",  # AG default: StudentT (more robust than Gaussian)
         "n_samples": 100,
         "lags": None,
         "embedding_dim": 10,
         "max_epochs": 100,
         "learning_rate": 1e-3,
-        "grad_clip": 1.0,
+        "grad_clip": 10.0,            # AG default: 10.0 (ours was 1.0 — too restrictive)
+        "weight_decay": 1e-8,         # AG default: 1e-8 (ours was 1e-4 — too much regularization)
     }
 
     def _fit(self, train_data, val_data=None, time_limit=None):

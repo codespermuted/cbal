@@ -27,7 +27,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from cbal.models import register_model
-from cbal.models.deep_learning.base import AbstractDLModel
+from cbal.models.deep_learning.base import AbstractDLModel, _get_loss_fn
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +233,7 @@ class PatchTSTModel(AbstractDLModel):
     _default_hyperparameters = {
         **AbstractDLModel._default_hyperparameters,
         "patch_len": 16,
-        "stride": 8,
+        "patch_stride": 4,            # PatchTST patch stride (4 = good balance of resolution & efficiency)
         "d_model": 128,
         "n_heads": 4,
         "n_layers": 2,
@@ -241,9 +241,8 @@ class PatchTSTModel(AbstractDLModel):
         "dropout": 0.2,
         "revin": True,
         "max_epochs": 50,
-        "learning_rate": 1e-4,
-        "stride": 2,
-        "loss_type": "mse",            # "mse" or "quantile"
+        "learning_rate": 1e-3,
+        "stride": 2,                   # dataset window stride (dense training samples)
         "quantile_levels": (0.1, 0.5, 0.9),
     }
 
@@ -260,7 +259,7 @@ class PatchTSTModel(AbstractDLModel):
             context_length=context_length,
             prediction_length=prediction_length,
             patch_len=self.get_hyperparameter("patch_len"),
-            stride=self.get_hyperparameter("stride"),
+            stride=self.get_hyperparameter("patch_stride"),
             d_model=self.get_hyperparameter("d_model"),
             n_heads=self.get_hyperparameter("n_heads"),
             n_layers=self.get_hyperparameter("n_layers"),
@@ -278,7 +277,8 @@ class PatchTSTModel(AbstractDLModel):
             q_preds = self._quantile_head(pred.unsqueeze(-1))  # (B, H, Q)
             return self._quantile_head.loss(q_preds, future)
 
-        return F.mse_loss(pred, future)
+        loss_fn = _get_loss_fn(self.get_hyperparameter("loss_type"))
+        return loss_fn(pred, future)
 
     def _predict_step(self, batch, quantile_levels=(0.1, 0.5, 0.9)):
         past = self._enrich_target(batch)

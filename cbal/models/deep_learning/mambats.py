@@ -24,7 +24,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from cbal.models import register_model
-from cbal.models.deep_learning.base import AbstractDLModel
+from cbal.models.deep_learning.base import AbstractDLModel, _get_loss_fn
 from cbal.models.deep_learning.patchtst import RevIN
 from cbal.models.deep_learning.layers.mamba import MambaBlock
 
@@ -396,7 +396,8 @@ class MambaTSModel(AbstractDLModel):
 
     def _train_step(self, batch):
         pred = self._network(self._enrich_target(batch))
-        loss = F.mse_loss(pred, batch["future_target"])
+        loss_fn = _get_loss_fn(self.get_hyperparameter("loss_type"))
+        loss = loss_fn(pred, batch["future_target"])
 
         # VAST: update distance matrix with current permutation and loss
         if (self._network.vast is not None

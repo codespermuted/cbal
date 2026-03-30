@@ -125,6 +125,8 @@ _PRESETS = {
             "AutoTheta": {},
             "RecursiveTabular": {"backend": "LightGBM"},
             "DirectTabular": {"backend": "LightGBM"},
+            # DLinear: simple but effective, fast to train
+            "DLinear": {"max_epochs": 100, "learning_rate": 1e-3, "patience": 20},
             # PatchTST: two LR variants — lr=1e-3 wins on some, 1e-4 on others
             "PatchTST": {"max_epochs": 50, "d_model": 128, "n_layers": 3,
                          "learning_rate": 1e-3, "patience": 20,
@@ -138,8 +140,8 @@ _PRESETS = {
             "DeepAR": {"max_epochs": 50, "hidden_size": 40,
                        "learning_rate": 1e-3, "patience": 20,
                        "batch_size": 64},
-            "TFT": {"max_epochs": 50, "d_model": 64, "patience": 20,
-                     "batch_size": 64, "learning_rate": 1e-3},
+            "TFT": {"max_epochs": 50, "d_model": 64, "n_lstm_layers": 2,
+                     "patience": 20, "batch_size": 64, "learning_rate": 1e-3},
             # Quantile variants for ensemble diversity
             "DLinear_Q": {"_base_model_name": "DLinear", "max_epochs": 50,
                           "loss_type": "quantile", "learning_rate": 1e-3},
@@ -169,7 +171,7 @@ _PRESETS = {
                          "learning_rate": 1e-4, "patience": 15, "batch_size": 64},
             "TFT": {"max_epochs": 100, "d_model": 64, "patience": 15},
             "N-HiTS": {"max_epochs": 100, "hidden_size": 256, "n_stacks": 3,
-                       "learning_rate": 5e-4, "patience": 15},
+                       "learning_rate": 1e-3, "patience": 15},
             "TimeMixer": {"max_epochs": 100, "d_model": 64, "n_scales": 4,
                           "patience": 15},
             # Quantile-trained variants for ensemble diversity
@@ -177,7 +179,7 @@ _PRESETS = {
                            "d_model": 128, "n_layers": 3, "learning_rate": 1e-4,
                            "loss_type": "quantile", "patience": 15},
             "N-HiTS_Q": {"_base_model_name": "N-HiTS", "max_epochs": 100,
-                          "hidden_size": 256, "learning_rate": 5e-4,
+                          "hidden_size": 256, "learning_rate": 1e-3,
                           "loss_type": "quantile", "patience": 15},
         },
         "ensemble": "WeightedEnsemble",
@@ -204,7 +206,7 @@ _PRESETS = {
             "TFT": {"max_epochs": 50, "d_model": 64, "n_lstm_layers": 2},
             "iTransformer": {"max_epochs": 50, "d_model": 256, "learning_rate": 1e-4},
             "N-HiTS": {"max_epochs": 50, "hidden_size": 256, "n_stacks": 3,
-                       "learning_rate": 5e-4},
+                       "learning_rate": 1e-3},
             "TSMixer": {"max_epochs": 50, "d_ff": 64, "n_layers": 4},
             "TimeMixer": {"max_epochs": 50, "d_model": 64, "n_scales": 4},
             "SegRNN": {"max_epochs": 50, "d_model": 128},
@@ -216,7 +218,7 @@ _PRESETS = {
                            "d_model": 128, "n_layers": 3, "learning_rate": 1e-4,
                            "loss_type": "quantile"},
             "N-HiTS_Q": {"_base_model_name": "N-HiTS", "max_epochs": 50,
-                          "hidden_size": 256, "learning_rate": 5e-4,
+                          "hidden_size": 256, "learning_rate": 1e-3,
                           "loss_type": "quantile"},
             "Chronos-2": {},  # Foundation model (zero-shot)
         },

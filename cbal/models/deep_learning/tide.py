@@ -26,7 +26,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from cbal.models.deep_learning.base import AbstractDLModel
+from cbal.models.deep_learning.base import AbstractDLModel, _get_loss_fn
 
 
 class _ResidualBlock(nn.Module):
@@ -199,7 +199,6 @@ class TiDEModel(AbstractDLModel):
         "max_epochs": 100,
         "learning_rate": 1e-3,
         "batch_size": 32,
-        "loss_type": "mse",            # "mse" or "quantile"
         "quantile_levels": (0.1, 0.5, 0.9),
     }
 
@@ -234,7 +233,8 @@ class TiDEModel(AbstractDLModel):
             q_preds = self._quantile_head(pred.unsqueeze(-1))  # (B, H, Q)
             return self._quantile_head.loss(q_preds, future)
 
-        return nn.functional.mse_loss(pred, future)
+        loss_fn = _get_loss_fn(self.get_hyperparameter("loss_type"))
+        return loss_fn(pred, future)
 
     def _predict_step(self, batch, quantile_levels=(0.1, 0.5, 0.9)):
         past = self._enrich_target(batch)       # (B, C)

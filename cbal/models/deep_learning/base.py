@@ -35,6 +35,30 @@ from cbal.models.deep_learning.dataset import TimeSeriesDataset
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Loss function factory — align training loss with eval metric
+# ---------------------------------------------------------------------------
+
+def _get_loss_fn(loss_type: str):
+    """Return a loss function matching the given type.
+
+    Supported: "mse", "mae", "huber", "quantile" (handled separately by models).
+    Using MAE loss when eval_metric=MAE directly optimizes the target metric
+    instead of the proxy MSE.
+    """
+    import torch.nn.functional as F
+
+    if loss_type == "mae":
+        return F.l1_loss
+    elif loss_type == "huber":
+        return F.smooth_l1_loss
+    elif loss_type == "mse":
+        return F.mse_loss
+    else:
+        # "quantile" and others — return MSE as fallback (quantile handled in model)
+        return F.mse_loss
+
+
 class _WarmupScheduler:
     """Linear warmup followed by another scheduler.
 
@@ -116,6 +140,9 @@ class AbstractDLModel(AbstractTimeSeriesModel):
         "gradient_accumulation_steps": 1,
         "use_amp": True,               # automatic mixed precision (faster on GPU)
         "max_batches_per_epoch": 50,   # AG-style: cap batches per epoch for speed
+        # --- Loss function ---
+        "loss_type": "mae",            # "mse", "mae", "huber", "quantile"
+                                       # MAE aligns with eval_metric=MAE for direct optimization
         # --- Per-item scaling (applied at base level) ---
         "target_scaling": "mean_abs",  # "mean_abs", "standard", "none"
     }

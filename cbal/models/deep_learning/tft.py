@@ -390,7 +390,7 @@ class TFTModel(AbstractDLModel):
         **AbstractDLModel._default_hyperparameters,
         "d_model": 64,
         "n_heads": 4,
-        "n_lstm_layers": 1,
+        "n_lstm_layers": 2,
         "dropout": 0.1,
         "embedding_dim": 16,
         "quantile_levels": [0.1, 0.5, 0.9],

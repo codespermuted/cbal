@@ -5,10 +5,12 @@ Extends N-BEATS with multi-rate signal sampling and hierarchical interpolation.
 Each block operates at a different temporal resolution (via MaxPool downsampling),
 then interpolates its output back to the full prediction horizon.
 
-Key ideas:
+Key ideas (per paper):
 - **Multi-rate sampling**: each stack processes input at different temporal scales
-- **Hierarchical interpolation**: coarse predictions are upsampled and refined
-- **Expressiveness**: captures both long-term trends and short-term patterns
+- **Hierarchical interpolation**: n_freq_downsample controls forecast expressiveness
+  separately from input pooling
+- **Naive1 initialization**: forecast starts from last observed value
+- **Input flip**: time-reversed input for MLP processing
 
 Reference: Challu et al., "N-HiTS: Neural Hierarchical Interpolation for
 Time Series Forecasting" (AAAI 2023).
@@ -23,66 +25,56 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from cbal.models import register_model
-from cbal.models.deep_learning.base import AbstractDLModel
-from cbal.models.deep_learning.patchtst import RevIN
+from cbal.models.deep_learning.base import AbstractDLModel, _get_loss_fn
 
 
 class NHiTSBlock(nn.Module):
-    """Single N-HiTS block: downsample → MLP → interpolate.
+    """Single N-HiTS block (paper-aligned).
 
-    Parameters
-    ----------
-    input_size : int
-        Lookback length after pooling.
-    output_size : int
-        Number of interpolation coefficients (before upsample).
-    n_theta : int
-        Dimension of basis expansion coefficients.
-    hidden_size : int
-    n_layers : int
-        MLP depth.
-    pooling_kernel : int
-        MaxPool kernel size for downsampling.
-    dropout : float
+    Architecture: MaxPool → MLP → separate backcast/forecast heads → interpolate.
+
+    Key changes from naive implementation:
+    - Backcast always has context_length coefficients (full resolution)
+    - Forecast uses n_freq_downsample (separate from pooling) for hierarchical resolution
+    - Input is time-reversed before processing
     """
 
-    def __init__(self, context_length, prediction_length, hidden_size=256,
-                 n_layers=2, pooling_kernel=1, dropout=0.1):
+    def __init__(self, context_length, prediction_length, hidden_size=512,
+                 n_mlp_layers=2, pooling_kernel=2, n_freq_downsample=1,
+                 dropout=0.0):
         super().__init__()
         self.context_length = context_length
         self.prediction_length = prediction_length
         self.pooling_kernel = pooling_kernel
 
         # Downsampled input size
-        self.pool_input_size = context_length // pooling_kernel
+        self.pool_input_size = max(context_length // pooling_kernel, 1)
 
-        # Per-paper: separate interpolation coefficients for backcast/forecast
-        # n_theta_backcast = context_length / pooling_kernel (coarser at higher pools)
-        # n_theta_forecast = prediction_length / pooling_kernel
-        self.n_theta_backcast = max(self.pool_input_size, 1)
-        self.n_theta_forecast = max(prediction_length // pooling_kernel, 1)
+        # Per paper: backcast = full resolution, forecast = downsampled by n_freq_downsample
+        self.n_theta_backcast = context_length  # always full resolution
+        self.n_theta_forecast = max(prediction_length // n_freq_downsample, 1)
 
-        # MaxPool for multi-rate sampling
+        # MaxPool for multi-rate input downsampling
         self.pool = nn.MaxPool1d(kernel_size=pooling_kernel, stride=pooling_kernel,
                                   ceil_mode=True) if pooling_kernel > 1 else nn.Identity()
 
-        # MLP stack
-        layers = [nn.Linear(self.pool_input_size, hidden_size), nn.ReLU(), nn.Dropout(dropout)]
-        for _ in range(n_layers - 1):
-            layers.extend([nn.Linear(hidden_size, hidden_size), nn.ReLU(), nn.Dropout(dropout)])
+        # MLP stack: [Linear → ReLU → Dropout] × n_layers
+        layers = []
+        in_dim = self.pool_input_size
+        for _ in range(n_mlp_layers):
+            layers.extend([nn.Linear(in_dim, hidden_size), nn.ReLU(), nn.Dropout(dropout)])
+            in_dim = hidden_size
         self.mlp = nn.Sequential(*layers)
 
         # Separate basis coefficients for backcast and forecast
-        self.backcast_fc = nn.Linear(hidden_size, self.n_theta_backcast)
-        self.forecast_fc = nn.Linear(hidden_size, self.n_theta_forecast)
+        n_theta = self.n_theta_backcast + self.n_theta_forecast
+        self.theta_fc = nn.Linear(hidden_size, n_theta)
 
     def forward(self, x):
         """
-        x : (B, L) — residual input
+        x : (B, L) — residual input (already time-reversed by network)
         Returns: backcast (B, L), forecast (B, H)
         """
-        B = x.size(0)
-
         # Downsample
         if self.pooling_kernel > 1:
             x_pool = self.pool(x.unsqueeze(1)).squeeze(1)  # (B, L//K)
@@ -96,39 +88,37 @@ class NHiTSBlock(nn.Module):
             x_pool = F.pad(x_pool, (0, self.pool_input_size - x_pool.size(1)))
 
         # MLP
-        h = self.mlp(x_pool)  # (B, H_hidden)
+        h = self.mlp(x_pool)  # (B, hidden_size)
 
-        # Basis coefficients
-        backcast_theta = self.backcast_fc(h)  # (B, n_theta)
-        forecast_theta = self.forecast_fc(h)  # (B, n_theta)
+        # Joint theta → split into backcast and forecast coefficients
+        theta = self.theta_fc(h)  # (B, n_theta_back + n_theta_fore)
+        backcast_theta = theta[:, :self.n_theta_backcast]
+        forecast_theta = theta[:, self.n_theta_backcast:]
 
-        # Interpolate to full resolution
-        backcast = F.interpolate(
-            backcast_theta.unsqueeze(1), size=self.context_length, mode='linear', align_corners=False
-        ).squeeze(1)  # (B, L)
-        forecast = F.interpolate(
-            forecast_theta.unsqueeze(1), size=self.prediction_length, mode='linear', align_corners=False
-        ).squeeze(1)  # (B, H)
+        # Backcast: already full resolution (context_length coefficients)
+        backcast = backcast_theta  # (B, L) — no interpolation needed
+
+        # Forecast: interpolate from coarse coefficients to full prediction_length
+        if self.n_theta_forecast == self.prediction_length:
+            forecast = forecast_theta
+        else:
+            forecast = F.interpolate(
+                forecast_theta.unsqueeze(1), size=self.prediction_length,
+                mode='linear', align_corners=False
+            ).squeeze(1)  # (B, H)
 
         return backcast, forecast
 
 
 class NHiTSNetwork(nn.Module):
-    """N-HiTS network: stacked blocks with hierarchical interpolation.
+    """N-HiTS network — paper-aligned implementation.
 
-    Parameters
-    ----------
-    context_length, prediction_length : int
-    n_stacks : int
-        Number of stacks (each with different pooling rate).
-    n_blocks_per_stack : int
-        Blocks per stack.
-    hidden_size : int
-    n_mlp_layers : int
-    pooling_kernels : list of int or None
-        Pooling kernel per stack. Default: exponentially increasing.
-    dropout : float
-    revin : bool
+    Changes from previous version:
+    - Input is time-reversed (flip) before processing
+    - Forecast initialized with Naive1 (last observed value)
+    - pooling_kernels default: [2, 2, 1] (large→small, per paper)
+    - n_freq_downsample: [4, 2, 1] (coarse→fine, per paper)
+    - No RevIN by default (paper uses identity scaler)
     """
 
     def __init__(
@@ -137,51 +127,48 @@ class NHiTSNetwork(nn.Module):
         prediction_length: int,
         n_stacks: int = 3,
         n_blocks_per_stack: int = 1,
-        hidden_size: int = 256,
+        hidden_size: int = 512,
         n_mlp_layers: int = 2,
         pooling_kernels: list[int] | None = None,
-        dropout: float = 0.1,
-        revin: bool = True,
+        n_freq_downsample: list[int] | None = None,
+        dropout: float = 0.0,
     ):
         super().__init__()
-        self.revin = RevIN(num_features=1, affine=False) if revin else None
+        self.prediction_length = prediction_length
 
-        # Default pooling: [1, 2, 4, ...] or user-specified
+        # Paper defaults: large pooling first (long-term), small last (short-term)
         if pooling_kernels is None:
-            pooling_kernels = [min(2**i, context_length) for i in range(n_stacks)]
+            pooling_kernels = [2, 2, 1]
+        # Paper defaults: coarse forecast first, fine last
+        if n_freq_downsample is None:
+            n_freq_downsample = [4, 2, 1]
 
         self.blocks = nn.ModuleList()
         for stack_idx in range(n_stacks):
             pk = pooling_kernels[min(stack_idx, len(pooling_kernels) - 1)]
+            nfd = n_freq_downsample[min(stack_idx, len(n_freq_downsample) - 1)]
             for _ in range(n_blocks_per_stack):
                 self.blocks.append(NHiTSBlock(
                     context_length=context_length,
                     prediction_length=prediction_length,
                     hidden_size=hidden_size,
-                    n_layers=n_mlp_layers,
+                    n_mlp_layers=n_mlp_layers,
                     pooling_kernel=pk,
+                    n_freq_downsample=nfd,
                     dropout=dropout,
                 ))
 
     def forward(self, x):
         """x: (B, L) → (B, H)"""
-        if self.revin is not None:
-            x = x.unsqueeze(-1)
-            x = self.revin(x)
-            x = x.squeeze(-1)
+        # Time-reverse input (per paper)
+        residual = x.flip(dims=(-1,))
 
-        residual = x
-        forecast = torch.zeros(x.size(0), self.blocks[0].prediction_length, device=x.device)
+        forecast = torch.zeros(x.size(0), self.prediction_length, device=x.device)
 
         for block in self.blocks:
             backcast, block_forecast = block(residual)
             residual = residual - backcast
             forecast = forecast + block_forecast
-
-        if self.revin is not None:
-            forecast = forecast.unsqueeze(-1)
-            forecast = self.revin.inverse(forecast)
-            forecast = forecast.squeeze(-1)
 
         return forecast
 
@@ -190,24 +177,33 @@ class NHiTSNetwork(nn.Module):
 class NHiTSModel(AbstractDLModel):
     """N-HiTS: Neural Hierarchical Interpolation for Time Series (AAAI 2023).
 
+    Paper-aligned implementation with:
+    - Separate pooling_kernels and n_freq_downsample
+    - Naive1 forecast initialization
+    - Time-reversed input
+    - Full-resolution backcast coefficients
+    - No RevIN (paper default)
+
     Other Parameters
     ----------------
     n_stacks : int (default 3)
     n_blocks_per_stack : int (default 1)
-    hidden_size : int (default 256)
+    hidden_size : int (default 512)
     n_mlp_layers : int (default 2)
-    pooling_kernels : list of int or None
-    dropout : float (default 0.1)
-    revin : bool (default True)
+    pooling_kernels : list[int] or None (default [2, 2, 1])
+    n_freq_downsample : list[int] or None (default [4, 2, 1])
+    dropout : float (default 0.0)
     """
 
     _default_hyperparameters = {
         **AbstractDLModel._default_hyperparameters,
         "n_stacks": 3, "n_blocks_per_stack": 1,
-        "hidden_size": 256, "n_mlp_layers": 2,
-        "pooling_kernels": None, "dropout": 0.1, "revin": True,
-        "max_epochs": 50, "learning_rate": 5e-4, "stride": 2,
-        "loss_type": "mse",            # "mse" or "quantile"
+        "hidden_size": 512, "n_mlp_layers": 2,
+        "pooling_kernels": None,       # [2, 2, 1] per paper
+        "n_freq_downsample": None,     # [4, 2, 1] per paper
+        "dropout": 0.0,               # paper default
+        "max_epochs": 100, "learning_rate": 1e-3, "stride": 2,
+        "revin": True,                 # RevIN helps with non-stationary data
         "quantile_levels": (0.1, 0.5, 0.9),
     }
 
@@ -216,7 +212,7 @@ class NHiTSModel(AbstractDLModel):
         if self.get_hyperparameter("loss_type") == "quantile":
             from cbal.models.deep_learning.layers.distributions import QuantileOutput
             self._quantile_head = QuantileOutput(
-                input_dim=1,  # per-step: (B, H, 1) → (B, H, Q)
+                input_dim=1,
                 quantile_levels=tuple(self.get_hyperparameter("quantile_levels")),
             )
 
@@ -227,8 +223,8 @@ class NHiTSModel(AbstractDLModel):
             hidden_size=self.get_hyperparameter("hidden_size"),
             n_mlp_layers=self.get_hyperparameter("n_mlp_layers"),
             pooling_kernels=self.get_hyperparameter("pooling_kernels"),
+            n_freq_downsample=self.get_hyperparameter("n_freq_downsample"),
             dropout=self.get_hyperparameter("dropout"),
-            revin=self.get_hyperparameter("revin"),
         )
 
     def _train_step(self, batch):
@@ -237,7 +233,8 @@ class NHiTSModel(AbstractDLModel):
         if self._quantile_head is not None:
             q_preds = self._quantile_head(pred.unsqueeze(-1))
             return self._quantile_head.loss(q_preds, future)
-        return F.mse_loss(pred, future)
+        loss_fn = _get_loss_fn(self.get_hyperparameter("loss_type"))
+        return loss_fn(pred, future)
 
     def _predict_step(self, batch, quantile_levels=(0.1, 0.5, 0.9)):
         pred = self._network(self._enrich_target(batch))
