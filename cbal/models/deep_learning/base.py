@@ -126,14 +126,14 @@ class AbstractDLModel(AbstractTimeSeriesModel):
         "batch_size": 64,
         "learning_rate": 1e-3,
         "patience": 20,
-        "grad_clip": 1.0,
+        "grad_clip": 10.0,             # AG default: 10.0 (was 1.0 — too restrictive)
         "num_workers": 0,
         "device": None,
         "val_fraction": 0.1,
         "stride": 1,
         # --- Optimizer & scheduler ---
-        "optimizer": "nadam",          # "adam", "nadam", "adamw"
-        "weight_decay": 1e-4,          # L2 regularization
+        "optimizer": "adam",           # AG uses plain Adam (was nadam)
+        "weight_decay": 1e-8,         # AG default: 1e-8 (was 1e-4 — 10,000x over-regularization)
         "warmup_fraction": 0.1,        # fraction of epochs for LR warmup
         "lr_scheduler": "cosine",      # "cosine", "plateau", "none"
         "lr_min_ratio": 0.01,          # min_lr = lr * lr_min_ratio

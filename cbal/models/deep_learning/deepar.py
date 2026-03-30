@@ -423,8 +423,7 @@ class DeepARModel(AbstractDLModel):
         "embedding_dim": 10,
         "max_epochs": 100,
         "learning_rate": 1e-3,
-        "grad_clip": 10.0,            # AG default: 10.0 (ours was 1.0 — too restrictive)
-        "weight_decay": 1e-8,         # AG default: 1e-8 (ours was 1e-4 — too much regularization)
+        "grad_clip": 10.0,            # AG default: 10.0
     }
 
     def _fit(self, train_data, val_data=None, time_limit=None):

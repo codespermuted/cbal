@@ -54,8 +54,8 @@ class _SeriesDecomp(nn.Module):
 class DLinearNetwork(nn.Module):
     """DLinear network: separate linear layers for trend and seasonal.
 
-    Operates on univariate input (B, L) — covariates handled externally
-    via the base class ``_enrich_target`` additive injection.
+    AG-aligned: includes hidden_dimension (default 20) for richer output
+    projection. Operates on univariate input (B, L).
     """
 
     def __init__(
@@ -63,16 +63,24 @@ class DLinearNetwork(nn.Module):
         context_length: int,
         prediction_length: int,
         kernel_size: int = 25,
+        hidden_dimension: int = 20,
     ):
         super().__init__()
         self.context_length = context_length
         self.prediction_length = prediction_length
+        self.hidden_dimension = hidden_dimension
 
         self.decomp = _SeriesDecomp(kernel_size)
 
-        # Single-channel linear layers (univariate)
-        self.linear_seasonal = nn.Linear(context_length, prediction_length)
-        self.linear_trend = nn.Linear(context_length, prediction_length)
+        # AG-style: project to prediction_length * hidden_dimension, then reduce
+        if hidden_dimension > 1:
+            self.linear_seasonal = nn.Linear(context_length, prediction_length * hidden_dimension)
+            self.linear_trend = nn.Linear(context_length, prediction_length * hidden_dimension)
+            self.output_proj = nn.Linear(hidden_dimension, 1)
+        else:
+            self.linear_seasonal = nn.Linear(context_length, prediction_length)
+            self.linear_trend = nn.Linear(context_length, prediction_length)
+            self.output_proj = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -83,11 +91,19 @@ class DLinearNetwork(nn.Module):
         x = x.unsqueeze(-1)
         seasonal, trend = self.decomp(x)
 
-        # (B, L, 1) → squeeze → (B, L) → linear → (B, H)
+        # (B, L, 1) → squeeze → (B, L) → linear
         seasonal_out = self.linear_seasonal(seasonal.squeeze(-1))
         trend_out = self.linear_trend(trend.squeeze(-1))
 
-        return seasonal_out + trend_out
+        combined = seasonal_out + trend_out  # (B, H*D) or (B, H)
+
+        if self.output_proj is not None:
+            # (B, H*D) → (B, H, D) → linear → (B, H, 1) → (B, H)
+            B = combined.size(0)
+            combined = combined.view(B, self.prediction_length, self.hidden_dimension)
+            combined = self.output_proj(combined).squeeze(-1)
+
+        return combined
 
 
 @register_model("DLinear")
@@ -108,12 +124,13 @@ class DLinearModel(AbstractDLModel):
     _default_hyperparameters = {
         **AbstractDLModel._default_hyperparameters,
         "kernel_size": 25,
+        "hidden_dimension": 20,        # AG default: 20 (richer output projection)
         "max_epochs": 100,
-        "learning_rate": 1e-3,         # AG-aligned LR
+        "learning_rate": 1e-3,
         "loss_type": "mse",            # MSE provides natural gradient damping for linear models
         "stride": 4,                   # larger stride for efficiency (DLinear is tiny)
         "use_amp": False,              # DLinear is too simple for AMP
-        "target_scaling": "none",      # DLinear's decomposition handles normalization
+        "target_scaling": "mean_abs",  # AG uses per-window MeanScaler (was "none" — broken)
         "quantile_levels": (0.1, 0.5, 0.9),
     }
 
@@ -130,6 +147,7 @@ class DLinearModel(AbstractDLModel):
             context_length=context_length,
             prediction_length=prediction_length,
             kernel_size=self.get_hyperparameter("kernel_size"),
+            hidden_dimension=self.get_hyperparameter("hidden_dimension"),
         )
 
     def _train_step(self, batch):
