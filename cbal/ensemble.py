@@ -179,7 +179,7 @@ class GreedyEnsembleSelection(AbstractTimeSeriesModel):
     """
 
     _default_hyperparameters: dict[str, Any] = {
-        "max_models": 25,
+        "max_models": 100,  # AG default: ensemble_size=100 (was 25)
         "metric": "MAE",
     }
 
@@ -246,6 +246,17 @@ class GreedyEnsembleSelection(AbstractTimeSeriesModel):
                 logger.warning(f"    {model.name} failed: {e}")
                 val_preds.append(None)
                 val_scores.append(float("inf") if metric.greater_is_better else float("inf"))
+
+        # AG-style outlier filtering: exclude models with loss > 10x median
+        finite_scores = [s for s in val_scores if np.isfinite(s)]
+        if len(finite_scores) >= 3:
+            median_score = float(np.median(finite_scores))
+            threshold = 10 * median_score
+            for i in range(n_models):
+                if val_scores[i] > threshold:
+                    logger.info(f"    Filtering {self.models[i].name} "
+                                f"(score={val_scores[i]:.1f} > 10x median={threshold:.1f})")
+                    val_preds[i] = None
 
         # Greedy forward selection
         logger.info(f"  Running greedy selection (max_models={max_models})...")

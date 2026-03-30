@@ -1153,6 +1153,17 @@ class TimeSeriesPredictor:
             )
 
         # --- Validation data ---
+        # AG-style auto num_val_windows: more windows for fewer items
+        if num_val_windows == "auto" or num_val_windows == 3:
+            n_items = train_data.num_items
+            if n_items < 20:
+                num_val_windows = 5   # few items → more windows for stability
+            elif n_items < 100:
+                num_val_windows = 3
+            else:
+                num_val_windows = 2   # many items → 2 windows is enough
+            logger.info(f"  Auto num_val_windows={num_val_windows} (n_items={n_items})")
+
         # [Feature 1] Parse num_val_windows for multi-window + stacking
         if isinstance(num_val_windows, tuple):
             total_windows = sum(num_val_windows)
