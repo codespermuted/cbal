@@ -87,6 +87,10 @@ class DLinearNetwork(nn.Module):
         x: (batch, context_length) — univariate enriched target
         Returns: (batch, prediction_length)
         """
+        # Per-window MeanScaler (AG-style): scale by mean absolute value
+        scale = x.abs().mean(dim=1, keepdim=True).clamp(min=1e-5)  # (B, 1)
+        x = x / scale
+
         # Add channel dim for decomposition: (B, L) → (B, L, 1)
         x = x.unsqueeze(-1)
         seasonal, trend = self.decomp(x)
@@ -103,7 +107,8 @@ class DLinearNetwork(nn.Module):
             combined = combined.view(B, self.prediction_length, self.hidden_dimension)
             combined = self.output_proj(combined).squeeze(-1)
 
-        return combined
+        # Inverse scale
+        return combined * scale
 
 
 @register_model("DLinear")
@@ -130,7 +135,7 @@ class DLinearModel(AbstractDLModel):
         "loss_type": "mse",            # MSE provides natural gradient damping for linear models
         "stride": 4,                   # larger stride for efficiency (DLinear is tiny)
         "use_amp": False,              # DLinear is too simple for AMP
-        "target_scaling": "mean_abs",  # AG uses per-window MeanScaler (was "none" — broken)
+        "target_scaling": "none",      # Per-window scaling is inside the network now (AG-style)
         "quantile_levels": (0.1, 0.5, 0.9),
     }
 
