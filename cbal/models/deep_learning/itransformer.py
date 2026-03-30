@@ -234,7 +234,7 @@ class iTransformerModel(AbstractDLModel):
         "dropout": 0.1,
         "revin": True,
         "max_epochs": 50,
-        "learning_rate": 1e-4,
+        "learning_rate": 1e-3,
         "quantile_levels": (0.1, 0.5, 0.9),
     }
 

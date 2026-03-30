@@ -433,15 +433,38 @@ class DeepARModel(AbstractDLModel):
             item_id: idx for idx, item_id in enumerate(sorted(train_data.item_ids))
         }
         self._n_items = len(self._item_id_to_idx)
+
+        # AG-style: extend context_length to accommodate largest lag
+        # This ensures lag features are computed from actual data, not zeros
+        lags = self.get_hyperparameter("lags")
+        if lags is None:
+            lags = _get_lags_for_freq(self.freq)
+        ctx = self.get_hyperparameter("context_length")
+        if ctx is None:
+            ctx = max(3 * self.prediction_length, 30)
+        max_lag = max(lags) if lags else 1
+        # Ensure context covers at least the largest useful lag
+        # Cap at available data to avoid issues with short series
+        median_len = int(train_data.num_timesteps_per_item().median())
+        needed = min(ctx + max_lag, median_len - self.prediction_length)
+        if needed > ctx:
+            self._hyperparameters["context_length"] = needed
+            import logging
+            logging.getLogger(__name__).info(
+                f"  DeepAR: extended context_length {ctx} → {needed} (max_lag={max_lag})"
+            )
+
         super()._fit(train_data, val_data, time_limit)
 
     def _build_network(self, context_length, prediction_length):
         lags = self.get_hyperparameter("lags")
         if lags is None:
             lags = _get_lags_for_freq(self.freq)
+        # Filter lags that exceed context_length (zeros for unavailable lags)
         lags = [l for l in lags if l <= context_length]
         if not lags:
             lags = [1]
+        self._lags = lags  # save for reference
 
         return DeepARNetwork(
             hidden_size=self.get_hyperparameter("hidden_size"),
