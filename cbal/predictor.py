@@ -1462,7 +1462,19 @@ class TimeSeriesPredictor:
             fit_time = time.time() - t0
             # Use resolved metric object (preserves seasonal_period etc.)
             metric = resolved_metric or self._resolved_metric
-            score = model.score(val_data, metric=metric)
+            # Multi-window scoring for more robust validation
+            if hasattr(self, '_val_splits') and len(self._val_splits) > 1:
+                scores = []
+                for _tw, vw in self._val_splits:
+                    try:
+                        s = model.score(vw, metric=metric)
+                        if np.isfinite(s):
+                            scores.append(s)
+                    except Exception:
+                        pass
+                score = float(np.mean(scores)) if scores else model.score(val_data, metric=metric)
+            else:
+                score = model.score(val_data, metric=metric)
             logger.info(
                 f"  {model_name:25s} | val_score={score:8.4f} | "
                 f"fit_time={fit_time:6.1f}s"
