@@ -445,7 +445,7 @@ class DeepARModel(AbstractDLModel):
         max_lag = max(lags) if lags else 1
         # Ensure context covers at least the largest useful lag
         # Cap at available data to avoid issues with short series
-        median_len = int(train_data.num_timesteps_per_item().median())
+        median_len = int(train_data.num_timesteps_per_item.median())
         needed = min(ctx + max_lag, median_len - self.prediction_length)
         if needed > ctx:
             self._hyperparameters["context_length"] = needed
