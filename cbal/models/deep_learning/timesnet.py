@@ -241,6 +241,7 @@ class TimesNetModel(AbstractDLModel):
         "d_model": 64, "d_ff": 64, "n_layers": 2,
         "top_k": 5, "num_kernels": 6,
         "dropout": 0.1, "revin": True,
+        "use_amp": False,              # cuFFT doesn't support non-power-of-2 sizes in half precision
         "max_epochs": 50, "learning_rate": 1e-3, "stride": 2,
         "quantile_levels": (0.1, 0.5, 0.9),
     }
