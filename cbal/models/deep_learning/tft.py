@@ -390,10 +390,10 @@ class TFTModel(AbstractDLModel):
         **AbstractDLModel._default_hyperparameters,
         "d_model": 64,
         "n_heads": 4,
-        "n_lstm_layers": 2,
+        "n_lstm_layers": 1,            # AG default: 1 (2 overfits on small datasets)
         "dropout": 0.1,
         "embedding_dim": 16,
-        "quantile_levels": [0.1, 0.5, 0.9],
+        "quantile_levels": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],  # AG: 9 quantiles
         "max_epochs": 100,
         "learning_rate": 1e-3,
     }
