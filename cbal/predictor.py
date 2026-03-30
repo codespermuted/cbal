@@ -977,7 +977,7 @@ class TimeSeriesPredictor:
         excluded_model_types: list[str] | None = None,
         hyperparameter_tune_kwargs: str | dict | None = None,
         enable_ensemble: bool = True,
-        num_val_windows: int | tuple[int, ...] = 1,
+        num_val_windows: int | tuple[int, ...] = 3,
         refit_full: bool = False,
         random_seed: int | None = 123,
         ensemble_hyperparameters: dict | None = None,
