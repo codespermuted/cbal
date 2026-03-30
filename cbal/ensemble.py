@@ -247,18 +247,6 @@ class GreedyEnsembleSelection(AbstractTimeSeriesModel):
                 val_preds.append(None)
                 val_scores.append(float("inf") if metric.greater_is_better else float("inf"))
 
-        # Pre-filter: exclude models with score > 5x the best valid score
-        # Conservative threshold to only remove clearly broken models
-        valid_scores = [s for s in val_scores if s < float("inf")]
-        if valid_scores:
-            best_individual = min(valid_scores)
-            threshold = best_individual * 5.0
-            for i in range(n_models):
-                if val_scores[i] > threshold:
-                    logger.info(f"    Excluding {self.models[i].name} "
-                                f"(score={val_scores[i]:.4f} > threshold={threshold:.4f})")
-                    val_preds[i] = None  # exclude from ensemble
-
         # Greedy forward selection
         logger.info(f"  Running greedy selection (max_models={max_models})...")
         selected = []
