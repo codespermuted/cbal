@@ -142,6 +142,9 @@ _PRESETS = {
                        "batch_size": 64},
             "TFT": {"max_epochs": 50, "d_model": 64, "patience": 20,
                      "batch_size": 64, "learning_rate": 1e-3},
+            "TFT_v2": {"_base_model_name": "TFT", "max_epochs": 50, "d_model": 64,
+                        "n_lstm_layers": 2, "patience": 20,
+                        "batch_size": 64, "learning_rate": 1e-3},
             # Quantile variants for ensemble diversity
             "DLinear_Q": {"_base_model_name": "DLinear", "max_epochs": 50,
                           "loss_type": "quantile", "learning_rate": 1e-3},
