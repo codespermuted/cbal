@@ -1159,13 +1159,18 @@ class TimeSeriesPredictor:
         # AG-style auto num_val_windows: more windows for fewer items
         if num_val_windows == "auto" or num_val_windows == 3:
             n_items = train_data.num_items
+            median_len = int(train_data.num_timesteps_per_item.median())
             if n_items < 20:
                 num_val_windows = 5   # few items → more windows for stability
             elif n_items < 100:
                 num_val_windows = 3
             else:
                 num_val_windows = 2   # many items → 2 windows is enough
-            logger.info(f"  Auto num_val_windows={num_val_windows} (n_items={n_items})")
+            # Ensure enough data per window (at least 5x pred_len per training split)
+            max_feasible = max(1, median_len // (self.prediction_length * 5) - 1)
+            if num_val_windows > max_feasible:
+                num_val_windows = max(2, max_feasible)
+            logger.info(f"  Auto num_val_windows={num_val_windows} (n_items={n_items}, median_len={median_len})")
 
         # [Feature 1] Parse num_val_windows for multi-window + stacking
         if isinstance(num_val_windows, tuple):
