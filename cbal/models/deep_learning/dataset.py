@@ -76,6 +76,8 @@ class TimeSeriesDataset(Dataset):
         self.n_items = max(len(self.item_id_to_idx), 1)
 
         self._samples: list[dict[str, Any]] = []
+        self._stochastic = (mode == "train")  # AG-style: random window each access
+        self._item_data: list[tuple] = []     # (item_id, item_idx, target, timestamps)
         self._prepare(data)
 
     def _prepare(self, data: TimeSeriesDataFrame):
@@ -93,22 +95,12 @@ class TimeSeriesDataset(Dataset):
                 min_len = self.context_length + self.prediction_length
                 if n < min_len:
                     continue
-                for start in range(0, n - min_len + 1, self.stride):
-                    end_ctx = start + self.context_length
-                    end_fut = end_ctx + self.prediction_length
-                    # Age: distance from first observation (0-indexed)
-                    past_age = np.arange(start, end_ctx, dtype=np.float64)
-                    future_age = np.arange(end_ctx, end_fut, dtype=np.float64)
-                    self._samples.append({
-                        "item_id": item_id,
-                        "item_id_index": item_idx,
-                        "past_target": target[start:end_ctx],
-                        "future_target": target[end_ctx:end_fut],
-                        "past_timestamps": timestamps[start:end_ctx],
-                        "future_timestamps": timestamps[end_ctx:end_fut],
-                        "past_age": past_age,
-                        "future_age": future_age,
-                    })
+                # Store item data for stochastic sampling
+                self._item_data.append((item_id, item_idx, target, timestamps, n))
+                # Also create fixed windows for __len__ estimation
+                n_windows = max(1, (n - min_len) // self.stride + 1)
+                for _ in range(n_windows):
+                    self._samples.append(len(self._item_data) - 1)  # index into _item_data
             elif self.mode == "predict":
                 if n < self.context_length:
                     pad_len = self.context_length - n
@@ -149,7 +141,27 @@ class TimeSeriesDataset(Dataset):
         return len(self._samples)
 
     def __getitem__(self, idx: int) -> dict[str, torch.Tensor | str]:
-        sample = self._samples[idx]
+        if self._stochastic and self._item_data:
+            # AG-style stochastic sampling: random window from random item
+            item_ref = self._samples[idx]
+            item_id, item_idx, target, timestamps, n = self._item_data[item_ref]
+            min_len = self.context_length + self.prediction_length
+            max_start = n - min_len
+            start = np.random.randint(0, max_start + 1) if max_start > 0 else 0
+            end_ctx = start + self.context_length
+            end_fut = end_ctx + self.prediction_length
+            sample = {
+                "item_id": item_id,
+                "item_id_index": item_idx,
+                "past_target": target[start:end_ctx],
+                "future_target": target[end_ctx:end_fut],
+                "past_timestamps": timestamps[start:end_ctx],
+                "future_timestamps": timestamps[end_ctx:end_fut],
+                "past_age": np.arange(start, end_ctx, dtype=np.float64),
+                "future_age": np.arange(end_ctx, end_fut, dtype=np.float64),
+            }
+        else:
+            sample = self._samples[idx]
 
         # Extract calendar fields for cyclic embedding
         past_feats = _extract_time_features(sample["past_timestamps"])
